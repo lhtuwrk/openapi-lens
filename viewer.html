@@ -71,6 +71,23 @@
 
     </div>
 
+    <button id="recent-menu-toggle" class="recent-menu-toggle" type="button" title="Recent specs" aria-label="Open recent specs" aria-expanded="false">
+      <span class="recent-menu-icon">&gt;</span>
+      <span id="recent-menu-badge" class="recent-menu-badge">0</span>
+    </button>
+
+    <div id="recent-drawer-backdrop" class="recent-drawer-backdrop" hidden></div>
+    <aside id="recent-drawer" class="recent-drawer" aria-hidden="true">
+      <div class="recent-drawer-head">
+        <div class="recent-drawer-title">Recent specs</div>
+        <button id="recent-drawer-close" class="icon-btn" type="button" title="Close">Close</button>
+      </div>
+      <div id="viewer-recent-list" class="viewer-recent-list"></div>
+      <div class="recent-drawer-foot">
+        <button id="viewer-clear-recent" class="copy-btn" type="button" title="Clear all recent specs">Clear all</button>
+      </div>
+    </aside>
+
     <template id="schema-view-template"></template>
 
     <script src="libs/js-yaml.min.js"></script>

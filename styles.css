@@ -267,6 +267,198 @@ body.is-resizing-panels {
 }
 
 /* ============================================================
+   RECENT DRAWER
+   ============================================================ */
+
+.recent-menu-toggle {
+  position: fixed;
+  bottom: 10%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 74px;
+  border-radius: 0px 12px 12px 0px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--panel-title);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1200;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.recent-menu-toggle:hover {
+  border-color: var(--search-focus-border);
+  box-shadow: 0 6px 20px var(--search-focus-shadow);
+}
+
+.recent-menu-toggle.is-open {
+  transform: translateY(-50%) translateX(2px);
+}
+
+.recent-menu-icon {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.recent-menu-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--method-get-bg);
+  color: var(--method-get-color);
+  border: 1px solid var(--method-get-border);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.recent-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.36);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1100;
+  transition: opacity 0.2s;
+}
+
+.recent-drawer-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.recent-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(360px, calc(100vw - 32px));
+  background: var(--panel-bg);
+  border-right: 1px solid var(--panel-border);
+  transform: translateX(-105%);
+  transition: transform 0.22s ease;
+  z-index: 1201;
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-drawer.is-open {
+  transform: translateX(0);
+}
+
+.recent-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--panel-head-border);
+  background: var(--panel-head-bg);
+}
+
+.recent-drawer-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--panel-title);
+  text-transform: uppercase;
+}
+
+.viewer-recent-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.viewer-recent-item {
+  border: 1px solid var(--endpoint-border);
+  border-radius: 10px;
+  background: var(--endpoint-bg);
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px;
+}
+
+.viewer-recent-main {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.viewer-recent-main:hover .viewer-recent-name {
+  text-decoration: underline;
+}
+
+.viewer-recent-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--endpoint-path);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viewer-recent-url {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viewer-recent-remove {
+  flex: 0 0 26px;
+  height: 26px;
+  align-self: center;
+  border: 1px solid var(--pill-border);
+  background: var(--pill-bg);
+  color: var(--pill-color);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.viewer-recent-remove:hover {
+  border-color: var(--status-error-border);
+  color: var(--status-error-color);
+}
+
+.recent-drawer-foot {
+  border-top: 1px solid var(--panel-head-border);
+  padding: 10px 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.recent-drawer-empty {
+  border: 1px dashed var(--empty-border);
+  border-radius: 10px;
+  background: var(--empty-bg);
+  color: var(--empty-color);
+  font-size: 12px;
+  padding: 12px;
+}
+
+/* ============================================================
    TOP BAR
    ============================================================ */
 
@@ -1376,5 +1568,15 @@ body.is-resizing-panels {
 
   .split-resizer {
     display: none;
+  }
+
+  .recent-menu-toggle {
+    left: 6px;
+    width: 30px;
+    height: 64px;
+  }
+
+  .recent-drawer {
+    width: min(340px, calc(100vw - 18px));
   }
 }

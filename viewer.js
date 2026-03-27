@@ -1,5 +1,7 @@
 (() => {
   const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
+  const RECENT_SPECS_KEY = "recentSpecs";
+  const MAX_RECENT_SPECS = 15;
   const endpointStore = new Map();
   let rawSpecText = "";
   let activeSpec = null;
@@ -68,6 +70,124 @@
     } catch (_) {
       // Ignore if runtime is unavailable.
     }
+  }
+
+  function recentSpecsFromData(data) {
+    const list = Array.isArray(data?.[RECENT_SPECS_KEY]) ? data[RECENT_SPECS_KEY] : [];
+    return list
+      .filter((item) => item && typeof item.url === "string" && item.url.trim())
+      .slice(0, MAX_RECENT_SPECS);
+  }
+
+  function setRecentBadge(count) {
+    const badge = document.getElementById("recent-menu-badge");
+    if (!badge) return;
+    const num = Number.isFinite(count) ? Math.max(0, count) : 0;
+    badge.textContent = num > 99 ? "99+" : String(num);
+  }
+
+  function renderRecentList(items) {
+    const listEl = document.getElementById("viewer-recent-list");
+    if (!listEl) return;
+
+    if (!items.length) {
+      listEl.innerHTML = '<div class="recent-drawer-empty">No recent specs yet.</div>';
+      return;
+    }
+
+    listEl.innerHTML = items.map((item) => {
+      const name = escapeHtml(item?.name || "Untitled spec");
+      const url = escapeHtml(String(item?.url || ""));
+      return `
+        <div class="viewer-recent-item">
+          <button class="viewer-recent-main" data-action="open-recent" data-url="${url}" title="Open spec">
+            <div class="viewer-recent-name">${name}</div>
+            <div class="viewer-recent-url">${url}</div>
+          </button>
+          <button class="viewer-recent-remove" data-action="remove-recent" data-url="${url}" title="Remove">✕</button>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function setRecentDrawerOpen(open) {
+    const drawer = document.getElementById("recent-drawer");
+    const backdrop = document.getElementById("recent-drawer-backdrop");
+    const toggleBtn = document.getElementById("recent-menu-toggle");
+    if (!drawer || !backdrop || !toggleBtn) return;
+
+    drawer.classList.toggle("is-open", open);
+    drawer.setAttribute("aria-hidden", open ? "false" : "true");
+    backdrop.classList.toggle("is-open", open);
+    backdrop.hidden = !open;
+    toggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    toggleBtn.classList.toggle("is-open", open);
+  }
+
+  function refreshRecentSpecs() {
+    chrome.storage.local.get([RECENT_SPECS_KEY], (data) => {
+      const items = recentSpecsFromData(data);
+      setRecentBadge(items.length);
+      renderRecentList(items);
+    });
+  }
+
+  function openRecentUrl(url) {
+    if (!url) return;
+    try {
+      chrome.tabs.create({ url });
+    } catch (_) {
+      window.open(url, "_blank");
+    }
+    setRecentDrawerOpen(false);
+  }
+
+  function removeRecentSpec(url) {
+    if (!url) return;
+    chrome.storage.local.get([RECENT_SPECS_KEY], (data) => {
+      const list = recentSpecsFromData(data);
+      const next = list.filter((item) => item?.url !== url);
+      chrome.storage.local.set({ [RECENT_SPECS_KEY]: next }, refreshRecentSpecs);
+    });
+  }
+
+  function bindRecentDrawer() {
+    const toggleBtn = document.getElementById("recent-menu-toggle");
+    const closeBtn = document.getElementById("recent-drawer-close");
+    const backdrop = document.getElementById("recent-drawer-backdrop");
+    const clearBtn = document.getElementById("viewer-clear-recent");
+    const listEl = document.getElementById("viewer-recent-list");
+
+    toggleBtn?.addEventListener("click", () => {
+      const isOpen = document.getElementById("recent-drawer")?.classList.contains("is-open");
+      setRecentDrawerOpen(!isOpen);
+    });
+
+    closeBtn?.addEventListener("click", () => setRecentDrawerOpen(false));
+    backdrop?.addEventListener("click", () => setRecentDrawerOpen(false));
+
+    clearBtn?.addEventListener("click", () => {
+      chrome.storage.local.set({ [RECENT_SPECS_KEY]: [] }, refreshRecentSpecs);
+    });
+
+    listEl?.addEventListener("click", (event) => {
+      const openTarget = event.target.closest('[data-action="open-recent"]');
+      if (openTarget) {
+        openRecentUrl(openTarget.dataset.url || "");
+        return;
+      }
+
+      const removeTarget = event.target.closest('[data-action="remove-recent"]');
+      if (removeTarget) {
+        removeRecentSpec(removeTarget.dataset.url || "");
+      }
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") setRecentDrawerOpen(false);
+    });
+
+    refreshRecentSpecs();
   }
 
   // ── Clipboard ────────────────────────────────────────────────────────────
@@ -1352,11 +1472,49 @@
     });
   }
 
+  function loadStoredSpec(stored) {
+    if (!stored?.rawText) {
+      renderDocsError("No spec found. Navigate to an OpenAPI/Swagger spec URL.");
+      setStatus("No spec loaded.", true);
+      return;
+    }
+
+    rawSpecText = stored.rawText;
+    setSourceUrl(stored.sourceUrl || "");
+
+    const rawEl = document.getElementById("raw-spec");
+    if (rawEl) rawEl.textContent = rawSpecText;
+
+    if (!window.jsyaml?.load) {
+      renderDocsError("YAML parser not found. Reload the extension.");
+      return;
+    }
+
+    const spec = parseSpec(rawSpecText);
+    if (!spec || typeof spec !== "object" || !spec.paths) {
+      renderDocsError("Invalid OpenAPI spec – missing paths.");
+      return;
+    }
+
+    activeSpec = spec;
+    schemaNodeStore.clear();
+    schemaCopyStore.clear();
+    valueTreeStore.clear();
+    schemaNodeSeq = 0;
+    schemaCopySeq = 0;
+    valueTreeSeq = 0;
+    schemaDescSeq = 0;
+
+    setSpecVersionTag(specVersion(spec));
+    renderDocs(spec);
+  }
+
   // ── Bootstrap ────────────────────────────────────────────────────────────
 
   function init() {
     setAppVersion();
     setStatusAuthor();
+    bindRecentDrawer();
 
     window.addEventListener("mousedown", onGlobalMouseDown);
     window.addEventListener("mousemove", onGlobalMouseMove);
@@ -1364,42 +1522,7 @@
 
     chrome.storage.local.get(["theme", "pendingSpec"], (data) => {
       applyTheme(data.theme || "light");
-
-      const stored = data.pendingSpec;
-      if (!stored?.rawText) {
-        renderDocsError("No spec found. Navigate to an OpenAPI/Swagger spec URL.");
-        setStatus("No spec loaded.", true);
-        return;
-      }
-
-      rawSpecText = stored.rawText;
-      if (stored.sourceUrl) setSourceUrl(stored.sourceUrl);
-
-      // Populate the left panel raw view.
-      const rawEl = document.getElementById("raw-spec");
-      if (rawEl) rawEl.textContent = rawSpecText;
-
-      if (!window.jsyaml?.load) {
-        renderDocsError("YAML parser not found. Reload the extension.");
-        return;
-      }
-
-      const spec = parseSpec(rawSpecText);
-      if (!spec || typeof spec !== "object" || !spec.paths) {
-        renderDocsError("Invalid OpenAPI spec – missing paths.");
-        return;
-      }
-
-      activeSpec = spec;
-      schemaNodeStore.clear();
-      schemaCopyStore.clear();
-      valueTreeStore.clear();
-      schemaNodeSeq = 0;
-      schemaCopySeq = 0;
-      valueTreeSeq = 0;
-
-      setSpecVersionTag(specVersion(spec));
-      renderDocs(spec);
+      loadStoredSpec(data.pendingSpec);
     });
 
     // Theme toggle in topbar.
@@ -1417,6 +1540,7 @@
     // React to theme changes from popup without reloading.
     chrome.storage.onChanged.addListener((changes) => {
       if (changes.theme) applyTheme(changes.theme.newValue);
+      if (changes[RECENT_SPECS_KEY]) refreshRecentSpecs();
     });
   }
 

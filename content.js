@@ -6,6 +6,8 @@
 
   const lowerUrl = pageUrl.toLowerCase();
   const looksLikeSpec = /\.(json|ya?ml)([?#].*)?$/.test(lowerUrl);
+  const RECENT_SPECS_KEY = "recentSpecs";
+  const MAX_RECENT_SPECS = 15;
 
   // ── DOM extraction (no fetch) ───────────────────────────────────────────
 
@@ -119,12 +121,71 @@
 
   // ── Open viewer ──────────────────────────────────────────────────────────
 
+  function normalizedUrl(url) {
+    try {
+      const u = new URL(url);
+      u.hash = "";
+      return u.toString();
+    } catch (_) {
+      return String(url || "");
+    }
+  }
+
+  function fallbackNameFromUrl(url) {
+    try {
+      const u = new URL(url);
+      const parts = u.pathname.split("/").filter(Boolean);
+      const last = parts[parts.length - 1];
+      if (last) return decodeURIComponent(last);
+      return u.hostname || "OpenAPI spec";
+    } catch (_) {
+      return "OpenAPI spec";
+    }
+  }
+
+  function titleFromRawSpec(rawText) {
+    const text = String(rawText || "");
+    if (!text) return "";
+
+    try {
+      const obj = JSON.parse(text);
+      const title = obj?.info?.title;
+      if (typeof title === "string" && title.trim()) return title.trim();
+    } catch (_) {
+      // Not JSON.
+    }
+
+    const yamlInfoTitle = text.match(/(^|\n)\s*title\s*:\s*["']?([^"'\n]+)["']?/m);
+    if (yamlInfoTitle && yamlInfoTitle[2]) return yamlInfoTitle[2].trim();
+
+    return "";
+  }
+
+  function saveRecentSpec(rawText, sourceUrl) {
+    const url = normalizedUrl(sourceUrl);
+    if (!url) return;
+
+    const title = titleFromRawSpec(rawText);
+    const name = title || fallbackNameFromUrl(url);
+    const entry = { url, name, lastOpenedAt: Date.now() };
+
+    chrome.storage.local.get([RECENT_SPECS_KEY], (data) => {
+      if (chrome.runtime.lastError) return;
+      const list = Array.isArray(data[RECENT_SPECS_KEY]) ? data[RECENT_SPECS_KEY] : [];
+      const deduped = [entry, ...list.filter((item) => item?.url !== url)].slice(0, MAX_RECENT_SPECS);
+      chrome.storage.local.set({ [RECENT_SPECS_KEY]: deduped });
+    });
+  }
+
   function openViewer(rawText) {
     try {
       const id = chrome?.runtime?.id;
       if (!id) return;
       const base = chrome.runtime.getURL("viewer.html");
       if (!base || base.includes("chrome-extension://invalid/")) return;
+
+      saveRecentSpec(rawText, pageUrl);
+
       chrome.storage.local.set(
         { pendingSpec: { rawText, sourceUrl: pageUrl } },
         () => window.location.replace(base)
