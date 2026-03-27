@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenAPI Lens</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+
+      <!-- ── Top bar ─────────────────────────────────────────────────────── -->
+      <header class="frame-topbar">
+        <div class="frame-title-wrap">
+          <div class="frame-title">openapi-lens</div>
+          <span id="viewer-version" class="frame-version">v-</span>
+        </div>
+        <div id="source-url" class="frame-url"></div>
+        <div class="frame-actions">
+          <button id="theme-toggle" class="icon-btn" title="Toggle theme">☾ Dark</button>
+        </div>
+      </header>
+
+      <!-- ── Main grid ───────────────────────────────────────────────────── -->
+      <main class="content-grid" id="content-grid">
+
+        <!-- Left panel: raw spec -->
+        <section class="panel" id="left-panel">
+          <div class="panel-head">
+            <div class="panel-head-left">
+              <span class="panel-title">RAW SPEC</span>
+            </div>
+            <div class="panel-head-right">
+              <button id="copy-raw-btn" class="copy-btn" title="Copy entire spec">Copy Spec</button>
+              <span class="panel-tag">DATA</span>
+            </div>
+          </div>
+          <div class="raw-wrap">
+            <pre id="raw-spec">Loading…</pre>
+          </div>
+        </section>
+
+        <div id="panel-resizer" class="panel-resizer" role="separator" aria-orientation="vertical" aria-label="Resize panels" tabindex="0"></div>
+
+        <!-- Right panel: parsed docs -->
+        <section class="panel" id="right-panel">
+          <div class="panel-head">
+            <div class="panel-head-left">
+              <span class="panel-title">OPENAPI DOCS</span>
+            </div>
+            <div class="panel-head-right">
+              <button id="raw-mode-toggle" class="icon-btn" data-mode="parsed" title="Toggle raw/parsed view">Raw</button>
+              <span class="panel-tag" id="spec-version">SPEC</span>
+            </div>
+          </div>
+          <div class="docs-panel-body">
+            <div id="docs-root"></div>
+            <div id="docs-raw-view">
+              <pre></pre>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- ── Status bar ──────────────────────────────────────────────────── -->
+      <div id="status" class="status-bar">
+        <span id="status-text">Loading specification…</span>
+        <span id="status-author" class="status-author">by @author</span>
+      </div>
+
+    </div>
+
+    <template id="schema-view-template"></template>
+
+    <script src="libs/js-yaml.min.js"></script>
+    <script src="viewer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenAPI Lens Settings</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --border: #e2e8f0;
+        --text: #1a2332;
+        --muted: #64748b;
+        --green: #16a34a;
+        --green-bg: rgba(22,163,74,.1);
+        --green-border: rgba(22,163,74,.35);
+        --toggle-off: #cbd5e1;
+        --toggle-on: #16a34a;
+        --toggle-knob: #ffffff;
+      }
+
+      [data-theme="dark"] {
+        --bg: #0a0f15;
+        --surface: #0f1923;
+        --border: #1e2d3d;
+        --text: #d8e3ec;
+        --muted: #8ea1b2;
+        --green: #27d17f;
+        --green-bg: rgba(39,209,127,.08);
+        --green-border: rgba(39,209,127,.35);
+        --toggle-off: #2d3f4f;
+        --toggle-on: #27d17f;
+        --toggle-knob: #d8e3ec;
+      }
+
+      *, *::before, *::after { box-sizing: border-box; }
+
+      body {
+        width: 300px;
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 13px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px 10px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .header img {
+        width: 24px;
+        height: 24px;
+      }
+
+      .header-title {
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--text);
+        flex: 1;
+      }
+
+      .header-version {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .settings-list {
+        padding: 8px 0;
+      }
+
+      .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 11px 16px;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.12s;
+      }
+
+      .setting-row:last-child {
+        border-bottom: none;
+      }
+
+      .setting-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .setting-label {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text);
+        margin-bottom: 2px;
+      }
+
+      .setting-desc {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      /* Toggle switch */
+      .toggle-wrap {
+        position: relative;
+        width: 40px;
+        height: 22px;
+        flex-shrink: 0;
+      }
+
+      .toggle-wrap input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        position: absolute;
+      }
+
+      .toggle-track {
+        position: absolute;
+        inset: 0;
+        background: var(--toggle-off);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .toggle-track::before {
+        content: "";
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        left: 3px;
+        top: 3px;
+        background: var(--toggle-knob);
+        border-radius: 50%;
+        transition: transform 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,.25);
+      }
+
+      .toggle-wrap input:checked + .toggle-track {
+        background: var(--toggle-on);
+      }
+
+      .toggle-wrap input:checked + .toggle-track::before {
+        transform: translateX(18px);
+      }
+
+      /* Theme select */
+      .theme-select {
+        appearance: none;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 12px;
+        padding: 5px 28px 5px 10px;
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        outline: none;
+        min-width: 90px;
+        flex-shrink: 0;
+        transition: border-color 0.15s;
+      }
+
+      .theme-select:focus {
+        border-color: var(--green);
+      }
+
+      .footer {
+        padding: 10px 16px 14px;
+        font-size: 11px;
+        color: var(--muted);
+        text-align: center;
+        border-top: 1px solid var(--border);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <img src="icons/icon-32.png" alt="OpenAPI Lens" />
+      <span class="header-title">OpenAPI Lens</span>
+      <span class="header-version" id="header-version">v-</span>
+    </div>
+
+    <div class="settings-list">
+
+      <!-- Auto-open -->
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Auto-open viewer</div>
+          <div class="setting-desc">Open immediately when a spec is detected, without a confirmation banner.</div>
+        </div>
+        <label class="toggle-wrap" title="Auto-open viewer">
+          <input type="checkbox" id="auto-open-toggle" />
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+      <!-- Theme -->
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Theme</div>
+          <div class="setting-desc">Viewer colour scheme.</div>
+        </div>
+        <select id="theme-select" class="theme-select">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div class="footer">Settings are saved automatically.</div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
