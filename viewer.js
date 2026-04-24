@@ -2,6 +2,7 @@
   const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
   const RECENT_SPECS_KEY = "recentSpecs";
   const MAX_RECENT_SPECS = 15;
+  const SKIP_VIEWER_PARAM = "oal_skip_viewer";
   const endpointStore = new Map();
   let rawSpecText = "";
   let activeSpec = null;
@@ -53,8 +54,21 @@
   function setSourceUrl(url) {
     const el = document.getElementById("source-url");
     if (!el) return;
+    el.href = buildSourceUrl(url) || "#";
     el.textContent = url;
     el.title = url;
+  }
+
+  function buildSourceUrl(url) {
+    const value = String(url || "").trim();
+    if (!value) return "";
+    try {
+      const nextUrl = new URL(value);
+      nextUrl.searchParams.set(SKIP_VIEWER_PARAM, "1");
+      return nextUrl.toString();
+    } catch (_) {
+      return value;
+    }
   }
 
   function setSpecVersionTag(val) {
@@ -1724,27 +1738,6 @@
     setStatus(`Loaded ${operations.length} endpoint(s).`);
   }
 
-  // ── Raw mode toggle ──────────────────────────────────────────────────────
-
-  function bindRawModeToggle() {
-    const btn = document.getElementById("raw-mode-toggle");
-    const docsRoot = document.getElementById("docs-root");
-    const rawView = document.getElementById("docs-raw-view");
-    if (!btn || !docsRoot || !rawView) return;
-
-    btn.addEventListener("click", () => {
-      const nowRaw = btn.dataset.mode !== "raw";
-      btn.dataset.mode = nowRaw ? "raw" : "parsed";
-      btn.textContent = nowRaw ? "Parsed" : "Raw";
-      docsRoot.style.display = nowRaw ? "none" : "";
-      rawView.style.display = nowRaw ? "" : "none";
-      if (nowRaw) {
-        const pre = rawView.querySelector("pre");
-        if (pre) pre.innerHTML = renderRawSpecWithHighlight(rawSpecText);
-      }
-    });
-  }
-
   // ── Copy raw spec ────────────────────────────────────────────────────────
 
   function bindCopyRaw() {
@@ -1889,7 +1882,6 @@
       applyTheme(next);
     });
 
-    bindRawModeToggle();
     bindCopyRaw();
     bindPanelResize();
 

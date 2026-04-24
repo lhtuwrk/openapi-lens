@@ -6,6 +6,7 @@
 
   const RECENT_SPECS_KEY = "recentSpecs";
   const MAX_RECENT_SPECS = 15;
+  const SKIP_VIEWER_PARAM = "oal_skip_viewer";
   const ALLOWED_CONTENT_TYPES = new Set([
     "application/json",
     "text/plain",
@@ -14,6 +15,15 @@
   ]);
   let hasDetected = false;
   let hasRenderedUi = false;
+
+  function shouldSkipViewerOnThisPage() {
+    try {
+      const current = new URL(window.location.href);
+      return current.searchParams.get(SKIP_VIEWER_PARAM) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
 
   // ── DOM extraction (no fetch) ───────────────────────────────────────────
 
@@ -289,6 +299,7 @@
   function detect() {
     if (hasDetected) return;
     hasDetected = true;
+    if (shouldSkipViewerOnThisPage()) return;
     if (hasRenderedUi || document.getElementById("oal-banner")) {
       return;
     }
