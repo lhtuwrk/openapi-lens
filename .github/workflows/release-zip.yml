@@ -1,0 +1,27 @@
+name: Release ZIP on tag
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create ZIP archive
+        run: |
+          ARCHIVE_NAME="${{ github.event.repository.name }}-v${{ github.ref_name }}.zip"
+          git archive --format=zip --output "$ARCHIVE_NAME" HEAD
+          echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release and upload ZIP
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ARCHIVE_NAME }}

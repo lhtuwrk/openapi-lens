@@ -4,10 +4,16 @@
   // Never run inside the viewer itself.
   if (pageUrl.startsWith("chrome-extension://")) return;
 
-  const lowerUrl = pageUrl.toLowerCase();
-  const looksLikeSpec = /\.(json|ya?ml)([?#].*)?$/.test(lowerUrl);
   const RECENT_SPECS_KEY = "recentSpecs";
   const MAX_RECENT_SPECS = 15;
+  const ALLOWED_CONTENT_TYPES = new Set([
+    "application/json",
+    "text/plain",
+    "application/yaml",
+    "text/yaml"
+  ]);
+  let hasDetected = false;
+  let hasRenderedUi = false;
 
   // ── DOM extraction (no fetch) ───────────────────────────────────────────
 
@@ -73,25 +79,43 @@
 
   // ── Guard: detect HTML pages / SPAs ─────────────────────────────────────
 
-  function isHtmlPage(text) {
-    const sample = text.trimStart().slice(0, 1000);
-    return /<html[\s>]|<!DOCTYPE\s/i.test(sample) || /window\.\w|document\.getElementById/.test(sample);
+  function isHTML(text) {
+    const sample = String(text || "").slice(0, 5000).toLowerCase();
+    const hasHtmlShell =
+      sample.includes("<html") ||
+      sample.includes("<!doctype") ||
+      sample.includes("<body");
+    const hasScriptSpaMarkers =
+      sample.includes("<script") &&
+      (sample.includes("window.") || sample.includes("document."));
+    return hasHtmlShell || hasScriptSpaMarkers;
+  }
+
+  function hasMinimumStructure(obj) {
+    if (!obj || typeof obj !== "object") return false;
+    if (!obj.paths || typeof obj.paths !== "object") return false;
+    if (Object.keys(obj.paths).length === 0) return false;
+    if (!obj.info) return false;
+    return true;
   }
 
   // ── Spec detection ───────────────────────────────────────────────────────
 
   function parseSpec(text) {
-    if (!text || text.length < 20) return null;
-    if (isHtmlPage(text)) return null;
+    if (!text || text.length < 50) return null;
+    if (isHTML(text)) return null;
 
     // Try JSON – require openapi/swagger AND paths.
     try {
       const obj = JSON.parse(text);
       if (
-        obj && typeof obj === "object" &&
-        (typeof obj.openapi === "string" || typeof obj.swagger === "string") &&
-        obj.paths && typeof obj.paths === "object"
+        obj &&
+        typeof obj === "object" &&
+        (obj.openapi || obj.swagger) &&
+        obj.paths &&
+        typeof obj.paths === "object"
       ) {
+        if (!hasMinimumStructure(obj)) return null;
         return obj;
       }
     } catch (_) {
@@ -101,22 +125,20 @@
     // YAML heuristic – require both version marker AND paths key.
     const hasOpenapi = /(^|\n)\s*openapi\s*:\s*['"]?\d/.test(text);
     const hasSwagger = /(^|\n)\s*swagger\s*:\s*['"]?\d/.test(text);
-    const hasPaths   = /(^|\n)\s*paths\s*:/.test(text);
-    if ((hasOpenapi || hasSwagger) && hasPaths) return { _yaml: true };
+    const hasPaths = /(^|\n)\s*paths\s*:/m.test(text);
+    const hasInfo = /(^|\n)\s*info\s*:/m.test(text);
+    if ((hasOpenapi || hasSwagger) && hasPaths && hasInfo) {
+      return { _yamlDetected: true };
+    }
 
     return null;
   }
 
   function shouldInspect() {
     const ct = (document.contentType || "").toLowerCase();
-    return (
-      looksLikeSpec ||
-      ct.includes("json") ||
-      ct.includes("yaml") ||
-      ct.includes("yml") ||
-      ct.includes("text/plain") ||
-      ct.includes("octet-stream")
-    );
+    const mime = ct.split(";")[0].trim();
+    if (!mime || mime === "text/html") return false;
+    return ALLOWED_CONTENT_TYPES.has(mime);
   }
 
   // ── Open viewer ──────────────────────────────────────────────────────────
@@ -183,6 +205,7 @@
       if (!id) return;
       const base = chrome.runtime.getURL("viewer.html");
       if (!base || base.includes("chrome-extension://invalid/")) return;
+      hasRenderedUi = true;
 
       saveRecentSpec(rawText, pageUrl);
 
@@ -199,6 +222,7 @@
 
   function showBanner(rawText) {
     if (document.getElementById("oal-banner")) return;
+    hasRenderedUi = true;
 
     const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
     const banner = document.createElement("div");
@@ -263,10 +287,18 @@
   // ── Main ─────────────────────────────────────────────────────────────────
 
   function detect() {
+    if (hasDetected) return;
+    hasDetected = true;
+    if (hasRenderedUi || document.getElementById("oal-banner")) {
+      return;
+    }
     if (!shouldInspect()) return;
     const rawText = extractText();
     if (!rawText) return;
-    if (!parseSpec(rawText)) return;
+    const result = parseSpec(rawText);
+    console.log("OpenAPI detection:", result);
+    if (!result) return;
+    if (hasRenderedUi || document.getElementById("oal-banner")) return;
 
     chrome.storage.local.get(["autoOpen"], (settings) => {
       if (chrome.runtime.lastError) return;

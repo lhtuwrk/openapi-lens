@@ -59,7 +59,7 @@ The extension uses:
 
 ## Version
 
-Current version: `1.1.0`
+Current version: `1.2.0`
 
 ## Project Structure
 

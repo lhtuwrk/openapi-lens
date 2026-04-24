@@ -13,6 +13,7 @@
   let valueTreeSeq = 0;
   let schemaDescSeq = 0;
   let activeMediaResize = null;
+  let activeMediaVResize = null;
 
   // ── Theme ────────────────────────────────────────────────────────────────
 
@@ -269,6 +270,78 @@
     }
   }
 
+  function highlightScalarWithSpacing(text, className) {
+    const raw = String(text || "");
+    const lead = raw.match(/^\s*/)?.[0] || "";
+    const tail = raw.match(/\s*$/)?.[0] || "";
+    const core = raw.slice(lead.length, raw.length - tail.length);
+    if (!core) return escapeHtml(raw);
+    return `${escapeHtml(lead)}<span class="${className}">${escapeHtml(core)}</span>${escapeHtml(tail)}`;
+  }
+
+  function highlightYamlScalar(raw) {
+    const value = String(raw || "");
+    const trimmed = value.trim();
+    if (!trimmed) return escapeHtml(value);
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+      return highlightScalarWithSpacing(value, "raw-token-string");
+    }
+    if (/^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(trimmed)) {
+      return highlightScalarWithSpacing(value, "raw-token-number");
+    }
+    if (/^(true|false|yes|no|on|off)$/i.test(trimmed)) {
+      return highlightScalarWithSpacing(value, "raw-token-boolean");
+    }
+    if (/^(null|~)$/i.test(trimmed)) {
+      return highlightScalarWithSpacing(value, "raw-token-null");
+    }
+    return escapeHtml(value);
+  }
+
+  function highlightYamlLine(line) {
+    const raw = String(line || "");
+    if (!raw) return "";
+
+    if (/^\s*#/.test(raw)) {
+      return `<span class="raw-token-comment">${escapeHtml(raw)}</span>`;
+    }
+
+    const keyValue = raw.match(/^(\s*-\s*)?([^:#\n][^:\n]*?)(\s*:\s*)(.*)$/);
+    if (keyValue) {
+      const [, listPrefix = "", key = "", separator = "", value = ""] = keyValue;
+      const inlineComment = value.match(/^(.*?)(\s+#.*)$/);
+      const scalarPart = inlineComment ? inlineComment[1] : value;
+      const commentPart = inlineComment ? inlineComment[2] : "";
+      return `${escapeHtml(listPrefix)}<span class="raw-token-key">${escapeHtml(key.trimEnd())}</span>${escapeHtml(separator)}${highlightYamlScalar(scalarPart)}${commentPart ? `<span class="raw-token-comment">${escapeHtml(commentPart)}</span>` : ""}`;
+    }
+
+    const listValue = raw.match(/^(\s*-\s+)(.+)$/);
+    if (listValue) {
+      return `${escapeHtml(listValue[1])}${highlightYamlScalar(listValue[2])}`;
+    }
+
+    return escapeHtml(raw);
+  }
+
+  function renderRawSpecWithHighlight(rawText) {
+    const source = String(rawText || "");
+    if (!source) return "";
+
+    if (looksLikeJsonBlock(source)) {
+      try {
+        const parsed = JSON.parse(source);
+        return renderExampleJsonRows(parsed, 0, "").join("\n");
+      } catch (_) {
+        return escapeHtml(source);
+      }
+    }
+
+    return source
+      .split(/\r?\n/)
+      .map((line) => highlightYamlLine(line))
+      .join("\n");
+  }
+
   function parseDescriptionBlocks(raw) {
     const lines = String(raw || "").replace(/\r\n?/g, "\n").split("\n");
     const blocks = [];
@@ -451,6 +524,64 @@
     };
   }
 
+  function resolveParameterRef(param, refTrail = new Set()) {
+    if (!param || typeof param !== "object") return null;
+    if (typeof param.$ref !== "string") return param;
+    if (!activeSpec || !param.$ref.startsWith("#/")) return null;
+    if (refTrail.has(param.$ref)) return null;
+
+    const nextTrail = new Set(refTrail);
+    nextTrail.add(param.$ref);
+
+    const target = pointerGet(activeSpec, param.$ref);
+    if (!target || typeof target !== "object") return null;
+
+    const merged = { ...target, ...param };
+    delete merged.$ref;
+    return resolveParameterRef(merged, nextTrail) || merged;
+  }
+
+  function normalizeParameter(param) {
+    const resolved = resolveParameterRef(param);
+    if (!resolved || typeof resolved !== "object") return null;
+
+    const name = typeof resolved.name === "string" ? resolved.name.trim() : "";
+    const where = typeof resolved.in === "string" ? resolved.in.trim() : "";
+    if (!name || !where) return null;
+
+    return {
+      ...resolved,
+      name,
+      in: where,
+      required: where === "path" ? true : !!resolved.required
+    };
+  }
+
+  function mergeOperationParameters(pathParams, opParams) {
+    const merged = [];
+    const indexByKey = new Map();
+    const sources = [
+      Array.isArray(pathParams) ? pathParams : [],
+      Array.isArray(opParams) ? opParams : []
+    ];
+
+    for (const source of sources) {
+      for (const rawParam of source) {
+        const param = normalizeParameter(rawParam);
+        if (!param) continue;
+        const key = `${String(param.in).toLowerCase()}::${String(param.name).toLowerCase()}`;
+        if (indexByKey.has(key)) {
+          merged[indexByKey.get(key)] = param;
+        } else {
+          indexByKey.set(key, merged.length);
+          merged.push(param);
+        }
+      }
+    }
+
+    return merged;
+  }
+
   function normalizeOperations(spec) {
     const result = [];
     const paths = spec?.paths && typeof spec.paths === "object" ? spec.paths : {};
@@ -460,7 +591,7 @@
       for (const method of HTTP_METHODS) {
         const op = pathItem[method];
         if (!op || typeof op !== "object") continue;
-        const mergedParams = [...shared, ...(Array.isArray(op.parameters) ? op.parameters : [])];
+        const mergedParams = mergeOperationParameters(shared, op.parameters);
 
         let requestBody = op.requestBody || null;
         if (!requestBody && typeof spec?.swagger === "string") {
@@ -472,6 +603,7 @@
           method,
           path: pathKey,
           summary: op.summary || op.operationId || "No summary",
+          tags: Array.isArray(op.tags) ? op.tags.filter((tag) => typeof tag === "string" && tag.trim()).map((tag) => tag.trim()) : [],
           description: op.description || "",
           parameters: mergedParams,
           requestBody,
@@ -480,6 +612,36 @@
       }
     }
     return result;
+  }
+
+  function groupOperationsByTag(spec, operations) {
+    const groupsByName = new Map();
+    const orderedGroups = [];
+
+    function ensureGroup(name, description = "") {
+      if (groupsByName.has(name)) return groupsByName.get(name);
+      const group = { name, description: String(description || ""), operations: [] };
+      groupsByName.set(name, group);
+      orderedGroups.push(group);
+      return group;
+    }
+
+    const declaredTags = Array.isArray(spec?.tags) ? spec.tags : [];
+    for (const tag of declaredTags) {
+      if (!tag || typeof tag !== "object") continue;
+      const name = typeof tag.name === "string" ? tag.name.trim() : "";
+      if (!name) continue;
+      ensureGroup(name, tag.description || "");
+    }
+
+    for (const op of operations) {
+      const tagNames = Array.isArray(op.tags) && op.tags.length ? op.tags : ["default"];
+      for (const tagName of tagNames) {
+        ensureGroup(tagName).operations.push(op);
+      }
+    }
+
+    return orderedGroups.filter((group) => group.operations.length > 0);
   }
 
   function stableJson(obj) {
@@ -929,6 +1091,38 @@
     `;
   }
 
+  function renderExampleSwitcher(exampleEntries) {
+    if (!Array.isArray(exampleEntries) || exampleEntries.length <= 1) return "";
+    const options = exampleEntries.map((entry, index) => `
+      <option value="${index}" ${index === 0 ? "selected" : ""}>${escapeHtml(entry.label)}</option>
+    `).join("");
+    return `
+      <div class="example-switcher">
+        <label class="example-switcher-label">Examples</label>
+        <select class="example-switcher-select" data-action="set-example">
+          ${options}
+        </select>
+      </div>
+    `;
+  }
+
+  function renderExampleViews(exampleEntries) {
+    if (!Array.isArray(exampleEntries) || !exampleEntries.length) {
+      return '<div class="muted">No example.</div>';
+    }
+
+    const views = exampleEntries.map((entry, index) => `
+      <div class="example-view ${index === 0 ? "is-active" : ""}" data-example-view-index="${index}">
+        ${renderExampleJsonPanel(entry.value)}
+      </div>
+    `).join("");
+
+    return `
+      ${renderExampleSwitcher(exampleEntries)}
+      <div class="example-views">${views}</div>
+    `;
+  }
+
   function renderSplitMediaView(schemaHtml, exampleHtml) {
     return `
       <div class="split-media" data-split-mode="split" style="--split-left-width:50%">
@@ -944,6 +1138,7 @@
           <div class="split-resizer" data-action="resize-split" role="separator" aria-orientation="vertical"></div>
           <section class="split-pane split-pane-example">${exampleHtml}</section>
         </div>
+        <div class="split-media-vresizer" data-action="resize-split-v" role="separator" aria-orientation="horizontal" title="Drag to resize height"></div>
       </div>
     `;
   }
@@ -952,7 +1147,9 @@
     if (!scopeEl || !keyPath) return;
     const root = scopeEl.closest(".split-media") || scopeEl;
     root.querySelectorAll(".json-key.is-highlight").forEach((el) => el.classList.remove("is-highlight"));
-    const target = root.querySelector(`.json-key[data-key-path="${escapeAttrValue(keyPath)}"]`);
+    const activeExampleView = root.querySelector(".example-view.is-active");
+    const target = (activeExampleView || root).querySelector(`.json-key[data-key-path="${escapeAttrValue(keyPath)}"]`)
+      || root.querySelector(`.json-key[data-key-path="${escapeAttrValue(keyPath)}"]`);
     if (target) {
       target.classList.add("is-highlight");
       target.scrollIntoView({ block: "nearest" });
@@ -969,24 +1166,53 @@
     startEvent.preventDefault();
   }
 
+  function startSplitVResize(resizerEl, startEvent) {
+    const split = resizerEl.closest(".split-media");
+    const body = split?.querySelector(".split-media-body");
+    if (!split || !body) return;
+    const startY = startEvent.clientY;
+    const startHeight = body.getBoundingClientRect().height;
+    activeMediaVResize = { split, resizerEl, startY, startHeight };
+    resizerEl.classList.add("is-dragging");
+    document.body.classList.add("is-resizing-split-v");
+    startEvent.preventDefault();
+  }
+
   function onGlobalMouseMove(event) {
-    if (!activeMediaResize) return;
-    const { split, rect } = activeMediaResize;
-    const raw = ((event.clientX - rect.left) / rect.width) * 100;
-    const clamped = Math.min(80, Math.max(20, raw));
-    split.style.setProperty("--split-left-width", `${clamped}%`);
+    if (activeMediaResize) {
+      const { split, rect } = activeMediaResize;
+      const raw = ((event.clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.min(80, Math.max(20, raw));
+      split.style.setProperty("--split-left-width", `${clamped}%`);
+    }
+    if (activeMediaVResize) {
+      const { split, startY, startHeight } = activeMediaVResize;
+      const delta = event.clientY - startY;
+      const newHeight = Math.max(120, Math.min(900, startHeight + delta));
+      split.style.setProperty("--split-body-height", `${newHeight}px`);
+    }
   }
 
   function onGlobalMouseUp() {
-    if (!activeMediaResize) return;
-    activeMediaResize = null;
-    document.body.classList.remove("is-resizing-panels");
+    if (activeMediaResize) {
+      activeMediaResize = null;
+      document.body.classList.remove("is-resizing-panels");
+    }
+    if (activeMediaVResize) {
+      activeMediaVResize.resizerEl.classList.remove("is-dragging");
+      activeMediaVResize = null;
+      document.body.classList.remove("is-resizing-split-v");
+    }
   }
 
   function onGlobalMouseDown(event) {
     const resizer = event.target.closest('[data-action="resize-split"]');
-    if (!resizer) return;
-    startSplitResize(resizer, event);
+    if (resizer) {
+      startSplitResize(resizer, event);
+      return;
+    }
+    const vresizer = event.target.closest('[data-action="resize-split-v"]');
+    if (vresizer) startSplitVResize(vresizer, event);
   }
 
   function normalizeExampleValue(value) {
@@ -1087,29 +1313,73 @@
     container.dataset.rendered = "true";
   }
 
+  function getMediaExamples(media) {
+    if (!media || typeof media !== "object") return [];
+
+    if (media.examples && typeof media.examples === "object") {
+      const entries = Object.entries(media.examples).reduce((acc, [exampleKey, exampleDef]) => {
+        let value;
+        let label = "";
+
+        if (exampleDef && typeof exampleDef === "object" && !Array.isArray(exampleDef)) {
+          if (exampleDef.value !== undefined) {
+            value = exampleDef.value;
+          } else if (exampleDef.externalValue !== undefined) {
+            value = `External example: ${String(exampleDef.externalValue)}`;
+          } else {
+            value = exampleDef;
+          }
+
+          const summary = typeof exampleDef.summary === "string" ? exampleDef.summary.trim() : "";
+          const description = typeof exampleDef.description === "string" ? exampleDef.description.trim() : "";
+          label = summary || description || String(exampleKey || "").trim();
+        } else {
+          value = exampleDef;
+          label = String(exampleKey || "").trim();
+        }
+
+        if (value === undefined) return acc;
+        acc.push({
+          key: String(exampleKey || "").trim() || `example-${acc.length + 1}`,
+          label: label || `Example ${acc.length + 1}`,
+          value
+        });
+        return acc;
+      }, []);
+
+      if (entries.length) return entries;
+    }
+
+    if (media.example !== undefined) {
+      return [{ key: "example", label: "Example", value: media.example }];
+    }
+
+    if (media.schema && typeof media.schema === "object" && media.schema.example !== undefined) {
+      return [{ key: "schema-example", label: "Schema example", value: media.schema.example }];
+    }
+
+    return [];
+  }
+
   function getMediaExample(media) {
     if (!media || typeof media !== "object") return null;
-    if (media.example !== undefined) return media.example;
-    if (media.schema && typeof media.schema === "object" && media.schema.example !== undefined) {
-      return media.schema.example;
-    }
-    if (media.examples && typeof media.examples === "object") {
-      const first = Object.values(media.examples)[0];
-      if (first && typeof first === "object" && first.value !== undefined) return first.value;
-      if (first !== undefined) return first;
-    }
-    return null;
+    const examples = getMediaExamples(media);
+    return examples.length ? examples[0].value : null;
   }
 
   function renderMediaContent(content, emptyText, panelContext = {}) {
     const entries = Object.entries(content || {});
     if (!entries.length) return `<div class="muted">${escapeHtml(emptyText)}</div>`;
 
-    return entries.map(([mediaType, media]) => {
-      let exampleValue = getMediaExample(media);
-      if (exampleValue === null && media?.schema) {
-        exampleValue = buildExampleFromSchema(media.schema);
+    const views = entries.map(([mediaType, media], index) => {
+      let mediaExamples = getMediaExamples(media);
+      if (!mediaExamples.length && media?.schema) {
+        const inferred = buildExampleFromSchema(media.schema);
+        if (inferred !== null) {
+          mediaExamples = [{ key: "inferred-example", label: "Generated example", value: inferred }];
+        }
       }
+      const exampleValue = mediaExamples.length ? mediaExamples[0].value : null;
 
       const schemaTitle = String(panelContext.title || media?.schema?.title || "").trim();
       const schemaDescription = String(media?.schema?.description || panelContext.description || "").trim();
@@ -1120,26 +1390,52 @@
           description: schemaDescription
         })
         : (exampleValue !== null ? renderTreePanel("Inferred Model", exampleValue) : '<div class="muted">No model schema.</div>');
-      const exampleHtml = exampleValue !== null
-        ? renderExampleJsonPanel(exampleValue)
-        : '<div class="muted">No example.</div>';
+      const exampleHtml = renderExampleViews(mediaExamples);
       const splitHtml = renderSplitMediaView(schemaHtml, exampleHtml);
+
       return `
-        <div class="media-block">
+        <div class="media-view ${index === 0 ? "is-active" : ""}" data-media-view-index="${index}">
           <div class="media-type">${escapeHtml(mediaType)}</div>
           ${splitHtml}
         </div>
       `;
-    }).join("");
+    });
+
+    if (entries.length === 1) {
+      return `
+        <div class="media-block">
+          ${views[0]}
+        </div>
+      `;
+    }
+
+    const selectorButtons = entries.map(([mediaType], index) => `
+      <button
+        class="media-type-btn ${index === 0 ? "is-active" : ""}"
+        type="button"
+        data-action="set-media-type"
+        data-media-index="${index}"
+        title="${escapeHtml(mediaType)}"
+      >${escapeHtml(mediaType)}</button>
+    `).join("");
+
+    return `
+      <div class="media-block media-block-selector">
+        <div class="media-type-switch" role="tablist" aria-label="Content types">
+          ${selectorButtons}
+        </div>
+        ${views.join("")}
+      </div>
+    `;
   }
 
   // ── Endpoint row ─────────────────────────────────────────────────────────
 
   function createEndpointRow(op) {
     const row = document.createElement("div");
-    row.className = "endpoint-row";
+    row.className = `endpoint-row endpoint-method-${op.method}`;
     row.dataset.endpointId = op.id;
-    row.dataset.searchText = `${op.method} ${op.path} ${op.summary}`.toLowerCase();
+    row.dataset.searchText = `${op.method} ${op.path} ${op.summary} ${(op.tags || []).join(" ")}`.toLowerCase();
 
     row.innerHTML = `
       <div class="endpoint-summary" data-action="toggle">
@@ -1163,8 +1459,15 @@
   // ── Detail sections ──────────────────────────────────────────────────────
 
   function tableForParams(params) {
-    if (!params.length) return '<div class="muted">No parameters.</div>';
-    const rows = params.map((p) => `
+    const safeParams = (Array.isArray(params) ? params : []).filter((p) => {
+      if (!p || typeof p !== "object") return false;
+      const name = typeof p.name === "string" ? p.name.trim() : "";
+      const where = typeof p.in === "string" ? p.in.trim() : "";
+      return !!name && !!where;
+    });
+
+    if (!safeParams.length) return '<div class="muted">No parameters.</div>';
+    const rows = safeParams.map((p) => `
       <tr>
         <td><strong>${escapeHtml(p.name || "-")}</strong></td>
         <td>${escapeHtml(p.in || "-")}</td>
@@ -1266,12 +1569,31 @@
     }
 
     endpointStore.clear();
-    const frag = document.createDocumentFragment();
-    for (const op of operations) {
-      endpointStore.set(op.id, op);
-      frag.appendChild(createEndpointRow(op));
+    const groups = groupOperationsByTag(spec, operations);
+    const listFrag = document.createDocumentFragment();
+
+    for (const group of groups) {
+      const groupEl = document.createElement("section");
+      groupEl.className = "tag-group";
+      groupEl.dataset.tagName = group.name;
+      groupEl.innerHTML = `
+        <div class="tag-group-head">
+          <h3 class="tag-group-title">${escapeHtml(group.name)}</h3>
+          ${group.description ? `<div class="tag-group-desc">${formatDescriptionCompact(group.description, "")}</div>` : ""}
+        </div>
+        <div class="tag-group-list"></div>
+      `;
+
+      const groupList = groupEl.querySelector(".tag-group-list");
+      const groupFrag = document.createDocumentFragment();
+      for (const op of group.operations) {
+        endpointStore.set(op.id, op);
+        groupFrag.appendChild(createEndpointRow(op));
+      }
+      groupList?.appendChild(groupFrag);
+      listFrag.appendChild(groupEl);
     }
-    list.appendChild(frag);
+    list.appendChild(listFrag);
 
     // Delegated toggle – skip if click originated from a copy button.
     root.addEventListener("click", (e) => {
@@ -1321,6 +1643,22 @@
         return;
       }
 
+      const mediaTypeBtn = e.target.closest('[data-action="set-media-type"]');
+      if (mediaTypeBtn) {
+        const mediaBlock = mediaTypeBtn.closest(".media-block-selector");
+        if (!mediaBlock) return;
+        const nextIndex = String(mediaTypeBtn.dataset.mediaIndex || "0");
+
+        mediaBlock.querySelectorAll('[data-action="set-media-type"]').forEach((btn) => {
+          btn.classList.toggle("is-active", btn === mediaTypeBtn);
+        });
+
+        mediaBlock.querySelectorAll(".media-view").forEach((view) => {
+          view.classList.toggle("is-active", view.dataset.mediaViewIndex === nextIndex);
+        });
+        return;
+      }
+
       const splitModeBtn = e.target.closest('[data-action="set-split-mode"]');
       if (splitModeBtn) {
         const split = splitModeBtn.closest(".split-media");
@@ -1353,6 +1691,17 @@
       if (row.classList.toggle("expanded")) renderDetails(row);
     });
 
+    root.addEventListener("change", (e) => {
+      const exampleSwitcher = e.target.closest('[data-action="set-example"]');
+      if (!exampleSwitcher) return;
+      const split = exampleSwitcher.closest(".split-media");
+      if (!split) return;
+      const nextIndex = String(exampleSwitcher.value || "0");
+      split.querySelectorAll(".example-view").forEach((view) => {
+        view.classList.toggle("is-active", view.dataset.exampleViewIndex === nextIndex);
+      });
+    });
+
     // Search filter.
     root.querySelector("#api-search")?.addEventListener("input", (e) => {
       const q = e.target.value.trim().toLowerCase();
@@ -1362,6 +1711,13 @@
         r.style.display = show ? "" : "none";
         if (show) visible++;
       });
+
+      list.querySelectorAll(".tag-group").forEach((groupEl) => {
+        const hasVisibleRow = Array.from(groupEl.querySelectorAll(".endpoint-row"))
+          .some((rowEl) => rowEl.style.display !== "none");
+        groupEl.style.display = hasVisibleRow ? "" : "none";
+      });
+
       setStatus(visible === 0 ? "No matches." : `Showing ${visible} endpoint(s).`, visible === 0);
     });
 
@@ -1384,7 +1740,7 @@
       rawView.style.display = nowRaw ? "" : "none";
       if (nowRaw) {
         const pre = rawView.querySelector("pre");
-        if (pre) pre.textContent = rawSpecText;
+        if (pre) pre.innerHTML = renderRawSpecWithHighlight(rawSpecText);
       }
     });
   }
@@ -1483,7 +1839,7 @@
     setSourceUrl(stored.sourceUrl || "");
 
     const rawEl = document.getElementById("raw-spec");
-    if (rawEl) rawEl.textContent = rawSpecText;
+    if (rawEl) rawEl.innerHTML = renderRawSpecWithHighlight(rawSpecText);
 
     if (!window.jsyaml?.load) {
       renderDocsError("YAML parser not found. Reload the extension.");
