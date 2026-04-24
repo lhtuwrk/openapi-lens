@@ -1,9 +1,11 @@
 {
 	"manifest_version": 3,
 	"name": "OpenAPI Lens",
-	"version": "1.2.0",
+	"version": "1.2.3",
 	"description": "Detects OpenAPI/Swagger specs and renders them with a lightweight, themeable viewer.",
-	"permissions": ["storage"],
+	"permissions": [
+		"storage"
+	],
 	"host_permissions": [
 		"http://*/*",
 		"https://*/*",
