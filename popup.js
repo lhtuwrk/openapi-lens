@@ -1,9 +1,12 @@
 (() => {
-  const autoOpenToggle = document.getElementById("auto-open-toggle");
-  const themeSelect    = document.getElementById("theme-select");
-  const versionEl      = document.getElementById("header-version");
-  const recentListEl   = document.getElementById("recent-specs-list");
-  const clearRecentBtn = document.getElementById("clear-recent-btn");
+  const autoOpenToggle  = document.getElementById("auto-open-toggle");
+  const themeSelect     = document.getElementById("theme-select");
+  const versionEl       = document.getElementById("header-version");
+  const recentListEl    = document.getElementById("recent-specs-list");
+  const clearRecentBtn  = document.getElementById("clear-recent-btn");
+  const uploadBtn       = document.getElementById("popup-upload-btn");
+  const fileInput       = document.getElementById("popup-file-input");
+  const uploadResultEl  = document.getElementById("upload-result");
 
   const RECENT_SPECS_KEY = "recentSpecs";
   const MAX_RECENT_SPECS = 15;
@@ -102,6 +105,99 @@
       chrome.storage.local.set({ [RECENT_SPECS_KEY]: next }, loadRecentSpecs);
     });
   }
+
+  // ── File upload ────────────────────────────────────────────────────────
+
+  function parseSpec(text) {
+    try { return JSON.parse(text); } catch (_) {}
+    if (window.jsyaml?.load) {
+      try { return window.jsyaml.load(text); } catch (_) {}
+    }
+    return null;
+  }
+
+  function validateSpecText(text) {
+    try {
+      const spec = parseSpec(text);
+      if (!spec || typeof spec !== "object") return { valid: false, error: "Cannot parse as JSON or YAML" };
+      if (!spec.openapi && !spec.swagger) return { valid: false, error: "Missing 'openapi' or 'swagger' field" };
+      if (!spec.paths) return { valid: false, error: "Missing 'paths' field" };
+      return { valid: true };
+    } catch (err) {
+      return { valid: false, error: String(err?.message || err) };
+    }
+  }
+
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsText(file);
+    });
+  }
+
+  function openSpecInViewer(rawText, filename) {
+    chrome.storage.local.set(
+      { pendingSpec: { rawText, sourceUrl: filename } },
+      () => {
+        const viewerUrl = chrome.runtime.getURL("viewer.html");
+        chrome.tabs.create({ url: viewerUrl });
+      }
+    );
+  }
+
+  function showUploadResults(results) {
+    if (!uploadResultEl) return;
+    uploadResultEl.hidden = false;
+    uploadResultEl.innerHTML = results.map((r) => `
+      <div class="upload-item ${r.valid ? "is-valid" : "is-invalid"}">
+        <span class="upload-item-icon">${r.valid ? "✓" : "✗"}</span>
+        <div class="upload-item-body">
+          <div class="upload-item-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
+          ${!r.valid ? `<div class="upload-item-error">${escapeHtml(r.error)}</div>` : ""}
+        </div>
+        ${r.valid ? `<button class="upload-open-btn" data-action="open-upload" data-file-name="${escapeHtml(r.name)}">Open</button>` : ""}
+      </div>
+    `).join("");
+
+    uploadResultEl.addEventListener("click", (e) => {
+      const btn = e.target.closest('[data-action="open-upload"]');
+      if (!btn) return;
+      const name = btn.dataset.fileName;
+      const result = results.find((r) => r.name === name && r.valid);
+      if (result) openSpecInViewer(result.text, result.name);
+    }, { once: true });
+  }
+
+  uploadBtn?.addEventListener("click", () => fileInput?.click());
+
+  fileInput?.addEventListener("change", async () => {
+    const files = Array.from(fileInput.files || []);
+    if (!files.length) return;
+    fileInput.value = "";
+    if (uploadResultEl) uploadResultEl.hidden = true;
+
+    const results = await Promise.all(files.map(async (file) => {
+      try {
+        const text = await readFileAsText(file);
+        const validation = validateSpecText(text);
+        return { name: file.name, text, ...validation };
+      } catch (err) {
+        return { name: file.name, valid: false, error: String(err?.message || "Failed to read file") };
+      }
+    }));
+
+    const validResults = results.filter((r) => r.valid);
+
+    // Single valid file, no invalids → open immediately
+    if (results.length === 1 && validResults.length === 1) {
+      openSpecInViewer(results[0].text, results[0].name);
+      return;
+    }
+
+    showUploadResults(results);
+  });
 
   function escapeHtml(v) {
     return String(v)

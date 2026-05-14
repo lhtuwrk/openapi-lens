@@ -270,6 +270,89 @@
         cursor: pointer;
         flex-shrink: 0;
       }
+
+      .upload-btn {
+        appearance: none;
+        border: 1px solid var(--green-border);
+        background: var(--green-bg);
+        color: var(--green);
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 5px 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.15s;
+      }
+
+      .upload-btn:hover {
+        background: rgba(22,163,74,.18);
+      }
+
+      .upload-result {
+        padding: 0 12px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .upload-result[hidden] { display: none; }
+
+      .upload-item {
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        padding: 7px 10px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+      }
+
+      .upload-item.is-valid {
+        border-color: var(--green-border);
+        background: var(--green-bg);
+      }
+
+      .upload-item.is-invalid {
+        border-color: rgba(220,38,38,.35);
+        background: rgba(220,38,38,.06);
+      }
+
+      .upload-item-icon { font-weight: 700; flex-shrink: 0; }
+      .upload-item.is-valid   .upload-item-icon { color: var(--green); }
+      .upload-item.is-invalid .upload-item-icon { color: #dc2626; }
+
+      .upload-item-body { flex: 1; min-width: 0; }
+
+      .upload-item-name {
+        font-weight: 600;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .upload-item-error {
+        font-size: 11px;
+        color: #dc2626;
+        margin-top: 1px;
+      }
+
+      .upload-open-btn {
+        appearance: none;
+        border: 1px solid var(--green-border);
+        background: var(--green-bg);
+        color: var(--green);
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 3px 9px;
+        cursor: pointer;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body>
@@ -305,7 +388,19 @@
         </select>
       </div>
 
+      <!-- Upload from file -->
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Open from file</div>
+          <div class="setting-desc">Load a local .json / .yaml / .yml spec.</div>
+        </div>
+        <button id="popup-upload-btn" type="button" class="upload-btn">Upload</button>
+        <input id="popup-file-input" type="file" accept=".json,.yaml,.yml" multiple hidden>
+      </div>
+
     </div>
+
+    <div id="upload-result" class="upload-result" hidden></div>
 
     <div class="recent-wrap">
       <div class="recent-head">
@@ -317,6 +412,7 @@
 
     <div class="footer">Settings are saved automatically.</div>
 
+    <script src="libs/js-yaml.min.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

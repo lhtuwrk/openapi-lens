@@ -15,6 +15,8 @@
   let schemaDescSeq = 0;
   let activeMediaResize = null;
   let activeMediaVResize = null;
+  let isEditMode = false;
+  let editorDebounceTimer = null;
 
   // ── Theme ────────────────────────────────────────────────────────────────
 
@@ -199,7 +201,11 @@
     });
 
     window.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") setRecentDrawerOpen(false);
+      if (event.key === "Escape") {
+        setRecentDrawerOpen(false);
+        setFileModalOpen(false);
+        if (isEditMode) setEditMode(false);
+      }
     });
 
     refreshRecentSpecs();
@@ -467,6 +473,19 @@
       try { return window.jsyaml.load(text); } catch (_) {}
     }
     return null;
+  }
+
+  function validateSpecText(text) {
+    if (!window.jsyaml?.load) return { valid: false, error: "YAML parser not available" };
+    try {
+      const spec = parseSpec(text);
+      if (!spec || typeof spec !== "object") return { valid: false, error: "Cannot parse as JSON or YAML" };
+      if (!spec.openapi && !spec.swagger) return { valid: false, error: "Missing 'openapi' or 'swagger' field" };
+      if (!spec.paths) return { valid: false, error: "Missing required 'paths' field" };
+      return { valid: true, spec };
+    } catch (err) {
+      return { valid: false, error: String(err?.message || err) };
+    }
   }
 
   function specVersion(spec) {
@@ -1455,7 +1474,7 @@
       <div class="endpoint-summary" data-action="toggle">
         <span class="method-pill method-${op.method}">${escapeHtml(op.method.toUpperCase())}</span>
         <span class="endpoint-path">${escapeHtml(op.path)}</span>
-        <span class="endpoint-summary-text">${escapeHtml(op.summary)}</span>
+        <span class="endpoint-summary-text" title="${escapeHtml(op.summary)}">${escapeHtml(op.summary)}</span>
         <button class="copy-btn js-copy-path" title="Copy path">Copy path</button>
         <span class="endpoint-chevron">›</span>
       </div>
@@ -1609,7 +1628,15 @@
     }
     list.appendChild(listFrag);
 
-    // Delegated toggle – skip if click originated from a copy button.
+    setStatus(`Loaded ${operations.length} endpoint(s).`);
+  }
+
+  // ── Docs event delegation (bound once) ───────────────────────────────────
+
+  function bindDocsEvents() {
+    const root = document.getElementById("docs-root");
+    if (!root) return;
+
     root.addEventListener("click", (e) => {
       const copySchemaBtn = e.target.closest('[data-action="copy-schema"]');
       if (copySchemaBtn) {
@@ -1662,11 +1689,9 @@
         const mediaBlock = mediaTypeBtn.closest(".media-block-selector");
         if (!mediaBlock) return;
         const nextIndex = String(mediaTypeBtn.dataset.mediaIndex || "0");
-
         mediaBlock.querySelectorAll('[data-action="set-media-type"]').forEach((btn) => {
           btn.classList.toggle("is-active", btn === mediaTypeBtn);
         });
-
         mediaBlock.querySelectorAll(".media-view").forEach((view) => {
           view.classList.toggle("is-active", view.dataset.mediaViewIndex === nextIndex);
         });
@@ -1716,26 +1741,24 @@
       });
     });
 
-    // Search filter.
-    root.querySelector("#api-search")?.addEventListener("input", (e) => {
+    root.addEventListener("input", (e) => {
+      if (!e.target.matches("#api-search")) return;
       const q = e.target.value.trim().toLowerCase();
+      const list = root.querySelector("#endpoint-list");
+      if (!list) return;
       let visible = 0;
       list.querySelectorAll(".endpoint-row").forEach((r) => {
         const show = !q || (r.dataset.searchText || "").includes(q);
         r.style.display = show ? "" : "none";
         if (show) visible++;
       });
-
       list.querySelectorAll(".tag-group").forEach((groupEl) => {
         const hasVisibleRow = Array.from(groupEl.querySelectorAll(".endpoint-row"))
           .some((rowEl) => rowEl.style.display !== "none");
         groupEl.style.display = hasVisibleRow ? "" : "none";
       });
-
       setStatus(visible === 0 ? "No matches." : `Showing ${visible} endpoint(s).`, visible === 0);
     });
-
-    setStatus(`Loaded ${operations.length} endpoint(s).`);
   }
 
   // ── Copy raw spec ────────────────────────────────────────────────────────
@@ -1821,25 +1844,32 @@
     });
   }
 
-  function loadStoredSpec(stored) {
-    if (!stored?.rawText) {
-      renderDocsError("No spec found. Navigate to an OpenAPI/Swagger spec URL.");
-      setStatus("No spec loaded.", true);
-      return;
+  function applyRawSpec(rawText, sourceLabel) {
+    rawSpecText = rawText;
+
+    // Exit edit mode without re-validating (we handle that below)
+    if (isEditMode) {
+      isEditMode = false;
+      clearTimeout(editorDebounceTimer);
+      const editor = document.getElementById("raw-spec-editor");
+      const editBtn = document.getElementById("edit-spec-btn");
+      if (editor) editor.hidden = true;
+      if (editBtn) { editBtn.textContent = "Edit"; editBtn.classList.remove("is-active"); }
+      const pre = document.getElementById("raw-spec");
+      if (pre) pre.hidden = false;
     }
 
-    rawSpecText = stored.rawText;
-    setSourceUrl(stored.sourceUrl || "");
+    setSourceUrl(sourceLabel || "");
 
     const rawEl = document.getElementById("raw-spec");
-    if (rawEl) rawEl.innerHTML = renderRawSpecWithHighlight(rawSpecText);
+    if (rawEl) rawEl.innerHTML = renderRawSpecWithHighlight(rawText);
 
     if (!window.jsyaml?.load) {
       renderDocsError("YAML parser not found. Reload the extension.");
       return;
     }
 
-    const spec = parseSpec(rawSpecText);
+    const spec = parseSpec(rawText);
     if (!spec || typeof spec !== "object" || !spec.paths) {
       renderDocsError("Invalid OpenAPI spec – missing paths.");
       return;
@@ -1856,6 +1886,160 @@
 
     setSpecVersionTag(specVersion(spec));
     renderDocs(spec);
+  }
+
+  function loadStoredSpec(stored) {
+    if (!stored?.rawText) {
+      renderDocsError("No spec found. Navigate to an OpenAPI/Swagger spec URL.");
+      setStatus("No spec loaded.", true);
+      return;
+    }
+    applyRawSpec(stored.rawText, stored.sourceUrl || "");
+  }
+
+  // ── File upload ──────────────────────────────────────────────────────────
+
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsText(file);
+    });
+  }
+
+  function setFileModalOpen(open) {
+    const modal = document.getElementById("file-modal");
+    const backdrop = document.getElementById("file-modal-backdrop");
+    if (!modal || !backdrop) return;
+    modal.hidden = !open;
+    backdrop.hidden = !open;
+  }
+
+  function bindFileUpload() {
+    const uploadBtn = document.getElementById("upload-file-btn");
+    const fileInput = document.getElementById("file-input");
+    const closeBtn = document.getElementById("file-modal-close");
+    const backdrop = document.getElementById("file-modal-backdrop");
+    const listEl = document.getElementById("file-modal-list");
+
+    uploadBtn?.addEventListener("click", () => fileInput?.click());
+    closeBtn?.addEventListener("click", () => setFileModalOpen(false));
+    backdrop?.addEventListener("click", () => setFileModalOpen(false));
+
+    let fileResults = [];
+
+    fileInput?.addEventListener("change", async () => {
+      const files = Array.from(fileInput.files || []);
+      if (!files.length) return;
+      fileInput.value = "";
+
+      fileResults = await Promise.all(files.map(async (file) => {
+        try {
+          const text = await readFileAsText(file);
+          const validation = validateSpecText(text);
+          return { name: file.name, text, ...validation };
+        } catch (err) {
+          return { name: file.name, valid: false, error: String(err?.message || "Failed to read file") };
+        }
+      }));
+
+      const validResults = fileResults.filter((r) => r.valid);
+
+      // Single valid file with no invalids → load immediately, no modal
+      if (fileResults.length === 1 && validResults.length === 1) {
+        applyRawSpec(fileResults[0].text, fileResults[0].name);
+        return;
+      }
+
+      // Show modal for multiple files or any invalid
+      if (!listEl) return;
+      listEl.innerHTML = fileResults.map((r) => `
+        <div class="file-result ${r.valid ? "is-valid" : "is-invalid"}">
+          <div class="file-result-head">
+            <span class="file-result-icon">${r.valid ? "✓" : "✗"}</span>
+            <span class="file-result-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</span>
+            ${r.valid ? `<button class="copy-btn" data-action="load-file" data-file-name="${escapeHtml(r.name)}">Load</button>` : ""}
+          </div>
+          ${!r.valid ? `<div class="file-result-error">${escapeHtml(r.error)}</div>` : ""}
+        </div>
+      `).join("");
+
+      listEl.addEventListener("click", (e) => {
+        const btn = e.target.closest('[data-action="load-file"]');
+        if (!btn) return;
+        const name = btn.dataset.fileName;
+        const result = fileResults.find((r) => r.name === name && r.valid);
+        if (result) {
+          applyRawSpec(result.text, result.name);
+          setFileModalOpen(false);
+        }
+      }, { once: true });
+
+      setFileModalOpen(true);
+    });
+  }
+
+  // ── Inline editor ────────────────────────────────────────────────────────
+
+  function setEditMode(active) {
+    isEditMode = active;
+    const pre = document.getElementById("raw-spec");
+    const editor = document.getElementById("raw-spec-editor");
+    const btn = document.getElementById("edit-spec-btn");
+    if (!pre || !editor || !btn) return;
+
+    if (active) {
+      editor.value = rawSpecText;
+      pre.hidden = true;
+      editor.hidden = false;
+      btn.textContent = "Done";
+      btn.classList.add("is-active");
+      editor.focus();
+    } else {
+      clearTimeout(editorDebounceTimer);
+      const text = editor.value;
+      rawSpecText = text;
+      pre.innerHTML = renderRawSpecWithHighlight(text);
+      pre.hidden = false;
+      editor.hidden = true;
+      btn.textContent = "Edit";
+      btn.classList.remove("is-active");
+      // Show validation status without wiping the docs panel
+      const result = validateSpecText(text);
+      if (!result.valid) setStatus("Invalid spec: " + result.error, true);
+    }
+  }
+
+  function bindInlineEditor() {
+    const btn = document.getElementById("edit-spec-btn");
+    const editor = document.getElementById("raw-spec-editor");
+    if (!btn || !editor) return;
+
+    btn.addEventListener("click", () => setEditMode(!isEditMode));
+
+    editor.addEventListener("input", () => {
+      clearTimeout(editorDebounceTimer);
+      editorDebounceTimer = setTimeout(() => {
+        const text = editor.value;
+        rawSpecText = text;
+        const result = validateSpecText(text);
+        if (result.valid) {
+          activeSpec = result.spec;
+          schemaNodeStore.clear();
+          schemaCopyStore.clear();
+          valueTreeStore.clear();
+          schemaNodeSeq = 0;
+          schemaCopySeq = 0;
+          valueTreeSeq = 0;
+          schemaDescSeq = 0;
+          setSpecVersionTag(specVersion(result.spec));
+          renderDocs(result.spec);
+        } else {
+          setStatus("Invalid spec: " + result.error, true);
+        }
+      }, 300);
+    });
   }
 
   // ── Bootstrap ────────────────────────────────────────────────────────────
@@ -1882,8 +2066,11 @@
       applyTheme(next);
     });
 
+    bindDocsEvents();
     bindCopyRaw();
     bindPanelResize();
+    bindFileUpload();
+    bindInlineEditor();
 
     // React to theme changes from popup without reloading.
     chrome.storage.onChanged.addListener((changes) => {

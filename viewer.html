@@ -31,12 +31,16 @@
               <span class="panel-title">RAW SPEC</span>
             </div>
             <div class="panel-head-right">
+              <button id="upload-file-btn" class="copy-btn" title="Upload spec file from device">Upload</button>
+              <input id="file-input" type="file" accept=".json,.yaml,.yml" multiple hidden>
+              <button id="edit-spec-btn" class="copy-btn" title="Edit spec inline">Edit</button>
               <button id="copy-raw-btn" class="copy-btn" title="Copy entire spec">Copy Spec</button>
               <span class="panel-tag">DATA</span>
             </div>
           </div>
           <div class="raw-wrap">
             <pre id="raw-spec">Loading…</pre>
+            <textarea id="raw-spec-editor" class="raw-editor" spellcheck="false" hidden></textarea>
           </div>
         </section>
 
@@ -88,6 +92,16 @@
     </aside>
 
     <template id="schema-view-template"></template>
+
+    <!-- ── File upload results modal ──────────────────────────────────────── -->
+    <div id="file-modal-backdrop" class="file-modal-backdrop" hidden></div>
+    <div id="file-modal" class="file-modal" role="dialog" aria-modal="true" aria-labelledby="file-modal-title" hidden>
+      <div class="file-modal-head">
+        <span id="file-modal-title" class="file-modal-title">Upload Results</span>
+        <button id="file-modal-close" class="icon-btn" type="button" title="Close">✕</button>
+      </div>
+      <div id="file-modal-list" class="file-modal-list"></div>
+    </div>
 
     <script src="libs/js-yaml.min.js"></script>
     <script src="viewer.js"></script>

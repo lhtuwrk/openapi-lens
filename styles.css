@@ -674,14 +674,15 @@ body.is-resizing-panels {
 .raw-wrap {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 #raw-spec {
   margin: 0;
   box-sizing: border-box;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  overflow: auto;
   padding: 14px;
   font-family: "Cascadia Mono", "Consolas", monospace;
   font-size: 12px;
@@ -1027,6 +1028,7 @@ body.is-resizing-panels {
   gap: 12px;
   user-select: none;
   min-width: 0;
+  overflow: hidden;
 }
 
 .method-pill {
@@ -1070,8 +1072,9 @@ body.is-resizing-panels {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 2;
+  flex: 0 2 auto;
   min-width: 0;
+  max-width: min(420px, 40%);
 }
 
 .endpoint-chevron {
@@ -1879,6 +1882,144 @@ body.is-resizing-split-v {
 
 .status-bar.error .status-author {
   color: var(--muted);
+}
+
+/* ============================================================
+   RAW SPEC EDITOR (inline edit mode)
+   ============================================================ */
+
+.raw-editor {
+  margin: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 14px;
+  font-family: "Cascadia Mono", "Consolas", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--raw-color);
+  background: var(--raw-bg);
+  white-space: pre;
+  tab-size: 2;
+  border: none;
+  border-left: 3px solid color-mix(in srgb, var(--green) 45%, transparent);
+  outline: none;
+  resize: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--panel-border) 70%, transparent);
+}
+
+.copy-btn.is-active {
+  background: var(--method-get-bg);
+  color: var(--method-get-color);
+  border-color: var(--method-get-border);
+}
+
+/* ============================================================
+   FILE UPLOAD MODAL
+   ============================================================ */
+
+.file-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1300;
+}
+
+.file-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100vw - 32px));
+  max-height: 70vh;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: var(--panel-bg);
+  z-index: 1301;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.file-modal[hidden] {
+  display: none;
+}
+
+.file-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--panel-head-border);
+  background: var(--panel-head-bg);
+  border-radius: 14px 14px 0 0;
+  flex-shrink: 0;
+}
+
+.file-modal-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--panel-title);
+  letter-spacing: 0.3px;
+}
+
+.file-modal-list {
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-result {
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--endpoint-bg);
+}
+
+.file-result.is-valid {
+  border-color: color-mix(in srgb, var(--green) 40%, var(--panel-border));
+  background: color-mix(in srgb, var(--green) 5%, var(--endpoint-bg));
+}
+
+.file-result.is-invalid {
+  border-color: color-mix(in srgb, var(--red) 40%, var(--panel-border));
+  background: color-mix(in srgb, var(--red) 5%, var(--endpoint-bg));
+}
+
+.file-result-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-result-icon {
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.file-result.is-valid .file-result-icon { color: var(--green); }
+.file-result.is-invalid .file-result-icon { color: var(--red); }
+
+.file-result-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--detail-title);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-result-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--red);
+  padding-left: 22px;
 }
 
 /* ============================================================
