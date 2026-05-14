@@ -12,11 +12,12 @@ Chrome Web Store: https://chromewebstore.google.com/detail/openapi-lens/mokdlalb
 - Search endpoints by method, path, or summary
 - Request/Response model viewer with collapsible schema tree
 - Split view for Schema and Example JSON
-- Raw/Parsed toggle in docs panel
 - Light and dark themes
 - Recent specs history (up to 15), available in:
   - Popup settings
   - Viewer slide-over panel from the left menu button (with count badge)
+- Open local `.json`/`.yaml`/`.yml` specs from popup or viewer
+- Inline spec editor with live re-render
 
 ## How It Works
 
@@ -59,7 +60,7 @@ The extension uses:
 
 ## Version
 
-Current version: `1.2.0`
+Current version: `1.3.0`
 
 ## Project Structure
 
