@@ -55,8 +55,19 @@ jobs:
           git archive --format=zip --output "$ARCHIVE_NAME" HEAD
           echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> "$GITHUB_ENV"
 
+      - name: Extract changelog section
+        run: |
+          # Pull the block between the current version header and the next one
+          NOTES=$(awk "/^## \[${EXT_VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="See [CHANGELOG.md](CHANGELOG.md) for details."
+          fi
+          # Write to a file to safely pass multi-line content
+          printf '%s' "$NOTES" > release_notes.md
+
       - name: Create GitHub Release and upload ZIP
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
+          body_path: release_notes.md
           files: ${{ env.ARCHIVE_NAME }}
