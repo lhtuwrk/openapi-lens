@@ -442,6 +442,16 @@ body.is-resizing-panels {
   color: var(--status-error-color);
 }
 
+.viewer-recent-remove.is-confirm {
+  flex-basis: auto;
+  width: auto;
+  padding: 0 10px;
+  border-color: var(--status-error-border);
+  color: var(--status-error-color);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .recent-drawer-foot {
   border-top: 1px solid var(--panel-head-border);
   padding: 10px 12px;
@@ -540,6 +550,10 @@ body.is-resizing-panels {
 
 .icon-btn:hover {
   background: var(--copy-btn-hover);
+}
+
+.icon-btn[hidden] {
+  display: none;
 }
 
 .copy-btn {
@@ -1924,6 +1938,194 @@ body.is-resizing-split-v {
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
   z-index: 1300;
+}
+
+/* ============================================================
+   CONFIRMATION MODAL
+   ============================================================ */
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1300;
+}
+
+.confirm-backdrop[hidden] {
+  display: none;
+}
+
+.confirm-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100vw - 32px));
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: var(--panel-bg);
+  z-index: 1301;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 16px;
+}
+
+.confirm-modal[hidden] {
+  display: none;
+}
+
+.confirm-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--panel-title);
+  margin-bottom: 6px;
+}
+
+.confirm-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-btn {
+  border: 1px solid var(--pill-border);
+  background: var(--pill-bg);
+  color: var(--pill-color);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.confirm-btn.is-danger {
+  border-color: var(--status-error-border);
+  color: var(--status-error-color);
+}
+
+/* ============================================================
+   SPEC DIFF (what changed since last visit)
+   ============================================================ */
+
+.diff-btn .diff-btn-count {
+  display: inline-block;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--pill-bg);
+  border: 1px solid var(--pill-border);
+  font-size: 10px;
+  text-align: center;
+}
+
+.diff-btn.has-breaking {
+  border-color: var(--status-error-border);
+  color: var(--status-error-color);
+}
+
+.diff-btn.has-breaking .diff-btn-count {
+  border-color: var(--status-error-border);
+  color: var(--status-error-color);
+}
+
+.diff-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(600px, calc(100vw - 32px));
+  max-height: 75vh;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: var(--panel-bg);
+  z-index: 1301;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-modal[hidden] {
+  display: none;
+}
+
+.diff-modal-meta {
+  padding: 10px 16px 0;
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.diff-modal-list {
+  overflow: auto;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diff-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--panel-title);
+  letter-spacing: 0.3px;
+  margin: 8px 0 2px;
+}
+
+.diff-section-title:first-child {
+  margin-top: 0;
+}
+
+.diff-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--endpoint-bg);
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.diff-item-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  border-radius: 5px;
+  padding: 1px 6px;
+  border: 1px solid var(--pill-border);
+  color: var(--pill-color);
+  background: var(--pill-bg);
+}
+
+.diff-item-badge.is-breaking {
+  border-color: var(--status-error-border);
+  color: var(--status-error-color);
+}
+
+.diff-item-path {
+  font-weight: 600;
+  color: var(--endpoint-path);
+  word-break: break-all;
+}
+
+.diff-item-text {
+  color: var(--muted);
+  min-width: 0;
+}
+
+.diff-truncated {
+  font-size: 11px;
+  color: var(--muted);
+  padding-top: 6px;
+  text-align: center;
 }
 
 .file-modal {

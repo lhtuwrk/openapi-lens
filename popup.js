@@ -4,12 +4,22 @@
   const versionEl       = document.getElementById("header-version");
   const recentListEl    = document.getElementById("recent-specs-list");
   const clearRecentBtn  = document.getElementById("clear-recent-btn");
+  const recentSearchEl  = document.getElementById("recent-search");
+  const confirmModalEl  = document.getElementById("confirm-modal");
+  const confirmBackdrop = document.getElementById("confirm-backdrop");
+  const confirmCountEl  = document.getElementById("confirm-count");
+  const confirmOkBtn    = document.getElementById("confirm-ok");
+  const confirmCancelBtn = document.getElementById("confirm-cancel");
   const uploadBtn       = document.getElementById("popup-upload-btn");
   const fileInput       = document.getElementById("popup-file-input");
   const uploadResultEl  = document.getElementById("upload-result");
 
   const RECENT_SPECS_KEY = "recentSpecs";
   const MAX_RECENT_SPECS = 15;
+  const REMOVE_CONFIRM_TIMEOUT_MS = 3000;
+
+  let allRecentSpecs = [];
+  let removeConfirmTimer = null;
 
   try {
     const version = chrome.runtime.getManifest()?.version;
@@ -55,12 +65,61 @@
     const removeTarget = event.target.closest("[data-action='remove-recent']");
     if (removeTarget) {
       const url = removeTarget.dataset.url;
-      if (url) removeRecentSpec(url);
+      if (!url) return;
+      if (removeTarget.classList.contains("is-confirm")) {
+        resetRemoveConfirm();
+        removeRecentSpec(url);
+      } else {
+        armRemoveConfirm(removeTarget);
+      }
+      return;
     }
+
+    resetRemoveConfirm();
   });
 
+  function armRemoveConfirm(button) {
+    resetRemoveConfirm();
+    button.classList.add("is-confirm");
+    button.textContent = "Sure?";
+    removeConfirmTimer = setTimeout(resetRemoveConfirm, REMOVE_CONFIRM_TIMEOUT_MS);
+  }
+
+  function resetRemoveConfirm() {
+    if (removeConfirmTimer) {
+      clearTimeout(removeConfirmTimer);
+      removeConfirmTimer = null;
+    }
+    recentListEl?.querySelectorAll(".recent-remove.is-confirm").forEach((btn) => {
+      btn.classList.remove("is-confirm");
+      btn.textContent = "✕";
+    });
+  }
+
   clearRecentBtn?.addEventListener("click", () => {
+    if (!allRecentSpecs.length) return;
+    setConfirmModalOpen(true);
+  });
+
+  function setConfirmModalOpen(open) {
+    if (!confirmModalEl || !confirmBackdrop) return;
+    if (open && confirmCountEl) confirmCountEl.textContent = String(allRecentSpecs.length);
+    confirmModalEl.hidden = !open;
+    confirmBackdrop.hidden = !open;
+  }
+
+  confirmCancelBtn?.addEventListener("click", () => setConfirmModalOpen(false));
+  confirmBackdrop?.addEventListener("click", () => setConfirmModalOpen(false));
+
+  confirmOkBtn?.addEventListener("click", () => {
     chrome.storage.local.set({ [RECENT_SPECS_KEY]: [] }, loadRecentSpecs);
+    setConfirmModalOpen(false);
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && confirmModalEl && !confirmModalEl.hidden) {
+      setConfirmModalOpen(false);
+    }
   });
 
   function applyPopupTheme(theme) {
@@ -70,9 +129,30 @@
   function loadRecentSpecs() {
     chrome.storage.local.get([RECENT_SPECS_KEY], (data) => {
       const list = Array.isArray(data[RECENT_SPECS_KEY]) ? data[RECENT_SPECS_KEY] : [];
-      renderRecentSpecs(list.slice(0, MAX_RECENT_SPECS));
+      allRecentSpecs = list.slice(0, MAX_RECENT_SPECS);
+      if (recentSearchEl) recentSearchEl.hidden = !allRecentSpecs.length;
+      filterRecentSpecs();
     });
   }
+
+  function filterRecentSpecs() {
+    const query = (recentSearchEl?.value || "").trim().toLowerCase();
+    if (!query) {
+      renderRecentSpecs(allRecentSpecs);
+      return;
+    }
+    const filtered = allRecentSpecs.filter((item) =>
+      String(item?.name || "").toLowerCase().includes(query) ||
+      String(item?.url || "").toLowerCase().includes(query)
+    );
+    if (!filtered.length && recentListEl) {
+      recentListEl.innerHTML = `<div class="recent-empty">No specs match "${escapeHtml(query)}".</div>`;
+      return;
+    }
+    renderRecentSpecs(filtered);
+  }
+
+  recentSearchEl?.addEventListener("input", filterRecentSpecs);
 
   function renderRecentSpecs(items) {
     if (!recentListEl) return;

@@ -17,6 +17,9 @@
         </div>
         <a id="source-url" class="frame-url"></a>
         <div class="frame-actions">
+          <button id="diff-btn" class="icon-btn diff-btn" type="button" title="View changes since last visit" hidden>
+            Δ Changes <span id="diff-btn-count" class="diff-btn-count">0</span>
+          </button>
           <button id="theme-toggle" class="icon-btn" title="Toggle theme">☾ Dark</button>
         </div>
       </header>
@@ -101,6 +104,28 @@
         <button id="file-modal-close" class="icon-btn" type="button" title="Close">✕</button>
       </div>
       <div id="file-modal-list" class="file-modal-list"></div>
+    </div>
+
+    <!-- ── Spec diff modal ────────────────────────────────────────────────── -->
+    <div id="diff-backdrop" class="confirm-backdrop" hidden></div>
+    <div id="diff-modal" class="diff-modal" role="dialog" aria-modal="true" aria-labelledby="diff-modal-title" hidden>
+      <div class="file-modal-head">
+        <span id="diff-modal-title" class="file-modal-title">What changed</span>
+        <button id="diff-modal-close" class="icon-btn" type="button" title="Close">✕</button>
+      </div>
+      <div id="diff-modal-meta" class="diff-modal-meta"></div>
+      <div id="diff-modal-list" class="diff-modal-list"></div>
+    </div>
+
+    <!-- ── Clear-all confirmation modal ───────────────────────────────────── -->
+    <div id="confirm-backdrop" class="confirm-backdrop" hidden></div>
+    <div id="confirm-modal" class="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
+      <div class="confirm-title" id="confirm-title">Clear all recent specs?</div>
+      <div class="confirm-desc">This removes <span id="confirm-count">0</span> saved spec(s). This cannot be undone.</div>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" type="button" class="confirm-btn">Cancel</button>
+        <button id="confirm-ok" type="button" class="confirm-btn is-danger">Clear all</button>
+      </div>
     </div>
 
     <script src="libs/js-yaml.min.js"></script>

@@ -211,6 +211,30 @@
         cursor: pointer;
       }
 
+      .recent-search {
+        width: 100%;
+        margin-bottom: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-size: 12px;
+        font-family: inherit;
+        border-radius: 7px;
+        padding: 5px 9px;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+
+      .recent-search::placeholder {
+        color: var(--muted);
+      }
+
+      .recent-search:focus {
+        border-color: var(--green);
+      }
+
+      .recent-search[hidden] { display: none; }
+
       .recent-list {
         max-height: 210px;
         overflow: auto;
@@ -269,6 +293,79 @@
         height: 24px;
         cursor: pointer;
         flex-shrink: 0;
+      }
+
+      .recent-remove.is-confirm {
+        width: auto;
+        padding: 0 8px;
+        border-color: rgba(220,38,38,.45);
+        background: rgba(220,38,38,.08);
+        color: #dc2626;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      /* Confirm modal */
+      .confirm-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.4);
+        z-index: 100;
+      }
+
+      .confirm-backdrop[hidden] { display: none; }
+
+      .confirm-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: calc(100% - 40px);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+        z-index: 101;
+        box-shadow: 0 10px 30px rgba(0,0,0,.3);
+      }
+
+      .confirm-modal[hidden] { display: none; }
+
+      .confirm-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      .confirm-desc {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.4;
+        margin-bottom: 12px;
+      }
+
+      .confirm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .confirm-btn {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 7px;
+        padding: 5px 12px;
+        cursor: pointer;
+      }
+
+      .confirm-btn.is-danger {
+        border-color: rgba(220,38,38,.45);
+        background: rgba(220,38,38,.08);
+        color: #dc2626;
       }
 
       .upload-btn {
@@ -407,10 +504,22 @@
         <div class="recent-title">Recent specs</div>
         <button id="clear-recent-btn" class="recent-clear" type="button">Clear</button>
       </div>
+      <input id="recent-search" class="recent-search" type="search"
+             placeholder="Search recent specs…" autocomplete="off" hidden>
       <div id="recent-specs-list" class="recent-list"></div>
     </div>
 
     <div class="footer">Settings are saved automatically.</div>
+
+    <div id="confirm-backdrop" class="confirm-backdrop" hidden></div>
+    <div id="confirm-modal" class="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
+      <div class="confirm-title" id="confirm-title">Clear all recent specs?</div>
+      <div class="confirm-desc">This removes <span id="confirm-count">0</span> saved spec(s). This cannot be undone.</div>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" type="button" class="confirm-btn">Cancel</button>
+        <button id="confirm-ok" type="button" class="confirm-btn is-danger">Clear all</button>
+      </div>
+    </div>
 
     <script src="libs/js-yaml.min.js"></script>
     <script src="popup.js"></script>

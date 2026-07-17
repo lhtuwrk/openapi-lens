@@ -2,6 +2,19 @@
 
 All notable changes to OpenAPI Lens are documented here.
 
+## [1.4.0] - 2026-07-16
+
+### Added
+- **Spec diff / breaking-change detection** — When a spec opened from a URL has changed since your last visit, a "Δ Changes" button appears in the viewer top bar (red-accented if anything is breaking). It opens a "What changed" report split into **Breaking changes** (endpoints/responses/media types removed, parameters removed or newly required, type changes, response properties removed, enum values removed, request body newly required, …) and **Other changes** (additions, deprecations, format/version changes). Snapshots are kept per URL in `chrome.storage.local` (last 10 URLs, specs over 400 KB skipped; uploaded files are not tracked).
+- **Deep search in the viewer** — The endpoint search now also matches operation descriptions, parameter names/descriptions, schema property names and titles, `$ref` schema names, and enum values across request and response bodies (resolved through `$ref`/`allOf`/`oneOf`/`anyOf`), so collapsed endpoints are found by their contents.
+- **Search in the popup** — Filter the "Recent specs" list live by name or URL. The search box hides itself when the history is empty.
+- **Delete confirmations** — Removing a recent spec now requires a second click ("Sure?", auto-reverts after 3 s), and "Clear all" opens a confirmation modal showing how many entries will be removed. Applies to both the popup and the viewer drawer.
+
+### Fixed
+- `hidden` attribute on `.icon-btn` elements was overridden by `display: inline-flex`, so conditionally-hidden top-bar buttons could stay visible.
+
+---
+
 ## [1.3.0] - 2026-05-14
 
 ### Added
