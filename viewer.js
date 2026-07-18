@@ -2416,9 +2416,36 @@
     window.addEventListener("mousemove", onGlobalMouseMove);
     window.addEventListener("mouseup", onGlobalMouseUp);
 
-    chrome.storage.local.get(["theme", "pendingSpec"], (data) => {
-      applyTheme(data.theme || "light");
-      loadStoredSpec(data.pendingSpec);
+    chrome.storage.local.get(["theme"], (data) => applyTheme(data.theme || "light"));
+
+    // Spec handoff. The raw spec text can be several megabytes (e.g. the Stripe
+    // spec) and must never linger in chrome.storage.local: that store is
+    // disk-backed and gets loaded/parsed on access, so a stale multi-MB value
+    // there makes every later startup read slow — including the popup's — to
+    // the point of a multi-second freeze.
+    //
+    // The content script (an untrusted context) can only write to local, so a
+    // value there is ALWAYS a fresh handoff and must win — hence we read local
+    // FIRST. The popup writes its handoff to the in-memory session store, and
+    // after loading we mirror the spec into session so a viewer reload still
+    // works this browser session. Either way we delete the local copy so
+    // nothing large is left on disk.
+    const sessionStore = chrome.storage.session;
+    chrome.storage.local.get(["pendingSpec"], (localData) => {
+      const fromLocal = localData?.pendingSpec;
+      if (fromLocal?.rawText) {
+        loadStoredSpec(fromLocal);
+        if (sessionStore) sessionStore.set({ pendingSpec: fromLocal });
+        chrome.storage.local.remove(["pendingSpec"]);
+        return;
+      }
+      if (!sessionStore) {
+        loadStoredSpec(fromLocal);
+        return;
+      }
+      // No fresh local handoff: a popup upload or a viewer reload — both live
+      // in the session store.
+      sessionStore.get(["pendingSpec"], (sessData) => loadStoredSpec(sessData?.pendingSpec));
     });
 
     // Theme toggle in topbar.

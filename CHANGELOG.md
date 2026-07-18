@@ -2,6 +2,11 @@
 
 All notable changes to OpenAPI Lens are documented here.
 
+## [1.5.1] - 2026-07-19
+
+### Fixed
+- **Popup freeze on open** — Clicking the extension icon could hang for several seconds before the popup appeared. The full raw spec text was stored in `chrome.storage.local` (disk-backed) and never removed, so a large lingering spec (e.g. the multi-megabyte Stripe spec) slowed every startup storage read — including the popup's. The spec is now handed to the viewer through the in-memory session store and purged from disk storage on load, so the popup opens instantly.
+
 ## [1.5.0] - 2026-07-18
 
 ### Added

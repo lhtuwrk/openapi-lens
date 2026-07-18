@@ -218,13 +218,17 @@
   }
 
   function openSpecInViewer(rawText, filename) {
-    chrome.storage.local.set(
-      { pendingSpec: { rawText, sourceUrl: filename } },
-      () => {
-        const viewerUrl = chrome.runtime.getURL("viewer.html");
-        chrome.tabs.create({ url: viewerUrl });
-      }
-    );
+    // Hand the spec off through the in-memory session store, not disk-backed
+    // local storage — an uploaded spec can be several megabytes and a stale
+    // copy in local slows every later storage read (including this popup's
+    // startup read) to the point of a multi-second freeze.
+    const pendingSpec = { rawText, sourceUrl: filename };
+    const openViewerTab = () => chrome.tabs.create({ url: chrome.runtime.getURL("viewer.html") });
+    if (chrome.storage.session) {
+      chrome.storage.session.set({ pendingSpec }, openViewerTab);
+    } else {
+      chrome.storage.local.set({ pendingSpec }, openViewerTab);
+    }
   }
 
   function showUploadResults(results) {
