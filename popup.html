@@ -445,10 +445,34 @@
         font-size: 11px;
         font-weight: 600;
         border-radius: 6px;
-        padding: 3px 9px;
+        padding: 5px;
         cursor: pointer;
         flex-shrink: 0;
         white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Compact icon-only buttons */
+      .icon-btn-square {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px;
+        flex-shrink: 0;
+      }
+
+      .icon-btn-square svg {
+        width: 15px;
+        height: 15px;
+        display: block;
+      }
+
+      .upload-open-btn svg {
+        width: 14px;
+        height: 14px;
+        display: block;
       }
     </style>
   </head>
@@ -491,7 +515,9 @@
           <div class="setting-label">Open from file</div>
           <div class="setting-desc">Load a local .json / .yaml / .yml spec.</div>
         </div>
-        <button id="popup-upload-btn" type="button" class="upload-btn">Upload</button>
+        <button id="popup-upload-btn" type="button" class="upload-btn icon-btn-square" title="Upload spec file" aria-label="Upload spec file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+        </button>
         <input id="popup-file-input" type="file" accept=".json,.yaml,.yml" multiple hidden>
       </div>
 
@@ -502,7 +528,9 @@
     <div class="recent-wrap">
       <div class="recent-head">
         <div class="recent-title">Recent specs</div>
-        <button id="clear-recent-btn" class="recent-clear" type="button">Clear</button>
+        <button id="clear-recent-btn" class="recent-clear icon-btn-square" type="button" title="Clear all recent specs" aria-label="Clear all recent specs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        </button>
       </div>
       <input id="recent-search" class="recent-search" type="search"
              placeholder="Search recent specs…" autocomplete="off" hidden>

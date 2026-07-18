@@ -262,8 +262,8 @@ body.is-resizing-panels {
   flex-direction: column;
   width: 100%;
   height: 100%;
-  padding: 10px;
-  gap: 10px;
+  padding: 8px;
+  gap: 6px;
 }
 
 /* ============================================================
@@ -476,18 +476,19 @@ body.is-resizing-panels {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 42px;
+  height: 32px;
   border: 1px solid var(--topbar-border);
-  border-radius: 12px;
+  border-radius: 9px;
   background: var(--topbar-bg);
-  box-shadow: 0 1px 2px rgba(43, 66, 93, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  padding: 0 14px;
-  gap: 12px;
+  box-shadow: 0 1px 2px rgba(43, 66, 93, 0.06);
+  padding: 0 10px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
 .frame-title {
   font-size: 12px;
+  font-weight: 600;
   color: var(--topbar-title);
   letter-spacing: 0.2px;
   white-space: nowrap;
@@ -496,28 +497,30 @@ body.is-resizing-panels {
 .frame-title-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .frame-version {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted);
-  padding: 2px 7px;
+  padding: 1px 6px;
   border-radius: 999px;
   border: 1px solid var(--pill-border);
   background: var(--pill-bg);
-  line-height: 1;
+  line-height: 1.4;
 }
 
 .frame-url {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--topbar-url);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  padding-left: 10px;
+  border-left: 1px solid var(--topbar-border);
 }
 
 .frame-actions {
@@ -525,6 +528,16 @@ body.is-resizing-panels {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+/* Proportion the toolbar icon buttons to the slimmer top bar. */
+.frame-actions .icon-btn-square {
+  padding: 5px;
+}
+
+.frame-actions .icon-btn-square svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* ============================================================
@@ -580,6 +593,33 @@ body.is-resizing-panels {
 .copy-btn.copy-success {
   color: var(--copy-success);
   border-color: var(--copy-success);
+}
+
+/* Compact icon-only buttons (raw-spec panel header). */
+.icon-btn-square {
+  padding: 6px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-btn-square svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.icon-btn-square .icon-alt {
+  display: none;
+}
+
+.icon-btn-square.is-active .icon-default,
+.icon-btn-square.copy-success .icon-default {
+  display: none;
+}
+
+.icon-btn-square.is-active .icon-alt,
+.icon-btn-square.copy-success .icon-alt {
+  display: block;
 }
 
 /* ============================================================
@@ -668,6 +708,9 @@ body.is-resizing-panels {
   font-weight: 700;
   color: var(--panel-title);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .panel-tag {
@@ -861,22 +904,85 @@ body.is-resizing-panels {
   text-transform: uppercase;
 }
 
+/* Zero-height marker just above the sticky bar; when it scrolls out of the
+   panel viewport an IntersectionObserver flips the bar into its "stuck" look. */
+.docs-search-sentinel {
+  height: 1px;
+  margin-bottom: -1px;
+}
+
+/* Negative side margins let the sticky bar's background span the full panel
+   width, while the matching horizontal padding keeps the input aligned with
+   the endpoint rows at rest. */
+.docs-search-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  margin: 0 -12px 10px;
+  padding: 8px 12px;
+  background: var(--panel-bg);
+  transition: background 0.25s ease, padding 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Inner wrapper: full width at rest (matches endpoint rows); when stuck it
+   shrinks so the input centers within the full-width glass bar. The rest
+   width is set in px by JS so the shrink animates over its full duration. */
+.docs-search-inner {
+  width: 100%;
+  max-width: var(--search-rest-max, 2000px);
+  transition: max-width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.docs-search-inner .search-input {
+  width: 100%;
+}
+
+/* Stuck: full-width frosted-glass strip pinned to the top; the input pill
+   stays solid and centers within it. */
+.docs-search-bar.is-stuck {
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+
+.docs-search-bar.is-stuck .docs-search-inner {
+  max-width: 460px;
+}
+
+.docs-search-bar.is-stuck .search-input {
+  border-radius: 999px;
+}
+
 .search-input {
+  box-sizing: border-box;
   width: 240px;
   max-width: 100%;
   border: 1px solid var(--search-border);
   border-radius: 10px;
   background: var(--search-bg);
   color: var(--text);
-  padding: 9px 12px;
+  padding: 9px 14px;
   outline: none;
   font-size: 14px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-radius 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s ease, border-color 0.15s ease;
 }
 
 .search-input:focus {
   border-color: var(--search-focus-border);
   box-shadow: 0 0 0 2px var(--search-focus-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docs-search-bar,
+  .docs-search-inner,
+  .search-input {
+    transition: none;
+  }
 }
 
 /* ============================================================
@@ -1117,15 +1223,6 @@ body.is-resizing-panels {
 
 .endpoint-row.expanded .endpoint-details {
   display: block;
-}
-
-.endpoint-row .endpoint-details .kv-table th,
-.endpoint-row .endpoint-details .kv-table td {
-  border-color: color-mix(in srgb, var(--endpoint-method-border, var(--kv-border)) 55%, var(--kv-border));
-}
-
-.endpoint-row .endpoint-details .kv-table th {
-  background: color-mix(in srgb, var(--endpoint-method-bg, var(--details-bg)) 48%, var(--kv-th-bg));
 }
 
 .detail-title {
@@ -1793,25 +1890,80 @@ body.is-resizing-split-v {
    TABLES
    ============================================================ */
 
-.kv-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
+.param-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.kv-table th,
-.kv-table td {
-  border: 1px solid var(--kv-border);
-  padding: 6px 8px;
-  text-align: left;
-  vertical-align: top;
-  color: var(--kv-td-color);
+.param-row {
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--endpoint-bg);
+  padding: 8px 10px;
 }
 
-.kv-table th {
-  background: var(--kv-th-bg);
-  color: var(--kv-th-color);
+.param-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.param-name {
   font-weight: 600;
+  font-size: 13px;
+  color: var(--endpoint-path);
+  word-break: break-all;
+}
+
+.param-badge {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--pill-border);
+  background: var(--pill-bg);
+  color: var(--pill-color);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.param-badge.is-in {
+  border-color: rgba(34, 197, 94, 0.4);
+  color: var(--green);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.param-badge.is-required {
+  border-color: var(--status-error-border);
+  color: var(--status-error-color);
+  background: transparent;
+}
+
+.param-badge.is-deprecated {
+  border-color: var(--status-error-border);
+  color: var(--status-error-color);
+  text-decoration: line-through;
+}
+
+.param-desc {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.param-desc p {
+  margin: 0 0 4px;
+}
+
+.param-desc p:last-child {
+  margin-bottom: 0;
 }
 
 /* ============================================================
@@ -1872,12 +2024,12 @@ body.is-resizing-split-v {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 12px;
+  padding: 4px 12px;
   border: 1px solid var(--status-border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--status-bg);
   color: var(--status-color);
-  font-size: 12px;
+  font-size: 11px;
   transition: background 0.25s, border-color 0.25s, color 0.25s;
 }
 
@@ -1886,12 +2038,32 @@ body.is-resizing-split-v {
   color: var(--status-error-color);
 }
 
+/* Leading state dot: green = ready, red = error (text still conveys state). */
+#status-text {
+  display: inline-flex;
+  align-items: center;
+}
+
+#status-text::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+
+.status-bar.error #status-text::before {
+  background: var(--status-error-color);
+}
+
 .status-author {
   margin-left: auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   white-space: nowrap;
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 .status-bar.error .status-author {
@@ -2007,125 +2179,6 @@ body.is-resizing-split-v {
 .confirm-btn.is-danger {
   border-color: var(--status-error-border);
   color: var(--status-error-color);
-}
-
-/* ============================================================
-   SPEC DIFF (what changed since last visit)
-   ============================================================ */
-
-.diff-btn .diff-btn-count {
-  display: inline-block;
-  min-width: 16px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: var(--pill-bg);
-  border: 1px solid var(--pill-border);
-  font-size: 10px;
-  text-align: center;
-}
-
-.diff-btn.has-breaking {
-  border-color: var(--status-error-border);
-  color: var(--status-error-color);
-}
-
-.diff-btn.has-breaking .diff-btn-count {
-  border-color: var(--status-error-border);
-  color: var(--status-error-color);
-}
-
-.diff-modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(600px, calc(100vw - 32px));
-  max-height: 75vh;
-  border: 1px solid var(--panel-border);
-  border-radius: 14px;
-  background: var(--panel-bg);
-  z-index: 1301;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-}
-
-.diff-modal[hidden] {
-  display: none;
-}
-
-.diff-modal-meta {
-  padding: 10px 16px 0;
-  font-size: 12px;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-
-.diff-modal-list {
-  overflow: auto;
-  padding: 12px 16px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.diff-section-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--panel-title);
-  letter-spacing: 0.3px;
-  margin: 8px 0 2px;
-}
-
-.diff-section-title:first-child {
-  margin-top: 0;
-}
-
-.diff-item {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  background: var(--endpoint-bg);
-  padding: 7px 10px;
-  font-size: 12px;
-}
-
-.diff-item-badge {
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  border-radius: 5px;
-  padding: 1px 6px;
-  border: 1px solid var(--pill-border);
-  color: var(--pill-color);
-  background: var(--pill-bg);
-}
-
-.diff-item-badge.is-breaking {
-  border-color: var(--status-error-border);
-  color: var(--status-error-color);
-}
-
-.diff-item-path {
-  font-weight: 600;
-  color: var(--endpoint-path);
-  word-break: break-all;
-}
-
-.diff-item-text {
-  color: var(--muted);
-  min-width: 0;
-}
-
-.diff-truncated {
-  font-size: 11px;
-  color: var(--muted);
-  padding-top: 6px;
-  text-align: center;
 }
 
 .file-modal {

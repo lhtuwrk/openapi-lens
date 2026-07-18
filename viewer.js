@@ -1,5 +1,10 @@
 (() => {
   const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
+  // Inline Lucide-style icons (self-contained SVG, no external requests).
+  const SVG_OPEN = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+  const ICON_COPY = `<svg class="icon-default" ${SVG_OPEN}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+  const ICON_CHECK = `<svg class="icon-alt" ${SVG_OPEN}><polyline points="20 6 9 17 4 12"/></svg>`;
+  const ICON_DOWNLOAD = `<svg ${SVG_OPEN}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
   const RECENT_SPECS_KEY = "recentSpecs";
   const MAX_RECENT_SPECS = 15;
   const SKIP_VIEWER_PARAM = "oal_skip_viewer";
@@ -20,21 +25,23 @@
   const REMOVE_CONFIRM_TIMEOUT_MS = 3000;
   let recentItemCount = 0;
   let removeConfirmTimer = null;
-  const SNAPSHOTS_KEY = "specSnapshots";
-  const SNAPSHOT_MAX_CHARS = 400000;
-  const SNAPSHOT_MAX_ENTRIES = 10;
-  const DIFF_MAX_ITEMS = 400;
   const SEARCH_SCHEMA_MAX_DEPTH = 5;
   const SEARCH_MAX_TOKENS = 400;
   const SEARCH_TEXT_MAX_CHARS = 6000;
-  let activeDiff = null;
 
   // ── Theme ────────────────────────────────────────────────────────────────
 
   function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
+    const isDark = theme === "dark";
+    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
     const btn = document.getElementById("theme-toggle");
-    if (btn) btn.textContent = theme === "dark" ? "☀ Light" : "☾ Dark";
+    if (btn) {
+      // is-active swaps the moon icon for the sun icon (see .icon-btn-square).
+      btn.classList.toggle("is-active", isDark);
+      const label = isDark ? "Switch to light theme" : "Switch to dark theme";
+      btn.title = label;
+      btn.setAttribute("aria-label", label);
+    }
   }
 
   // ── Status / header helpers ──────────────────────────────────────────────
@@ -267,7 +274,6 @@
     window.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         setConfirmModalOpen(false);
-        setDiffModalOpen(false);
         setRecentDrawerOpen(false);
         setFileModalOpen(false);
         if (isEditMode) setEditMode(false);
@@ -282,9 +288,14 @@
   function copyText(text, btn) {
     navigator.clipboard.writeText(text).then(() => {
       if (!btn) return;
+      btn.classList.add("copy-success");
+      // Icon buttons show a check via CSS; don't overwrite their SVG contents.
+      if (btn.classList.contains("icon-btn-square")) {
+        setTimeout(() => btn.classList.remove("copy-success"), 1500);
+        return;
+      }
       const orig = btn.textContent;
       btn.textContent = "Copied!";
-      btn.classList.add("copy-success");
       setTimeout(() => {
         btn.textContent = orig;
         btn.classList.remove("copy-success");
@@ -1183,7 +1194,7 @@
       <div class="example-panel" data-example-panel="true">
         <div class="schema-panel-head">
           <span class="schema-panel-title">Example JSON</span>
-          <button class="copy-btn" data-action="copy-schema" data-schema-copy-id="${copyId}" title="Copy JSON">Copy JSON</button>
+          <button class="copy-btn icon-btn-square" data-action="copy-schema" data-schema-copy-id="${copyId}" title="Copy JSON" aria-label="Copy JSON">${ICON_COPY}${ICON_CHECK}</button>
         </div>
         <pre class="example-json-pre">${rows.join("\n")}</pre>
       </div>
@@ -1389,7 +1400,7 @@
       <div class="schema-panel" data-tree-panel="true">
         <div class="schema-panel-head">
           <span class="schema-panel-title">${escapeHtml(title)}</span>
-          <button class="copy-btn" data-action="copy-schema" data-schema-copy-id="${copyId}" title="Copy JSON">Copy JSON</button>
+          <button class="copy-btn icon-btn-square" data-action="copy-schema" data-schema-copy-id="${copyId}" title="Copy JSON" aria-label="Copy JSON">${ICON_COPY}${ICON_CHECK}</button>
         </div>
         <div class="schema-tree">${renderTree(normalized, 0)}</div>
       </div>
@@ -1624,7 +1635,7 @@
         <span class="method-pill method-${op.method}">${escapeHtml(op.method.toUpperCase())}</span>
         <span class="endpoint-path">${escapeHtml(op.path)}</span>
         <span class="endpoint-summary-text" title="${escapeHtml(op.summary)}">${escapeHtml(op.summary)}</span>
-        <button class="copy-btn js-copy-path" title="Copy path">Copy path</button>
+        <button class="copy-btn icon-btn-square js-copy-path" title="Copy path" aria-label="Copy path">${ICON_COPY}${ICON_CHECK}</button>
         <span class="endpoint-chevron">›</span>
       </div>
       <div class="endpoint-details" data-details-container="true"></div>
@@ -1640,7 +1651,50 @@
 
   // ── Detail sections ──────────────────────────────────────────────────────
 
-  function tableForParams(params) {
+  function paramInlineValue(value) {
+    if (typeof value === "string") return value;
+    try { return JSON.stringify(value); } catch (_) { return String(value); }
+  }
+
+  function paramRow(p) {
+    const schema = resolveSchemaRef(p.schema && typeof p.schema === "object" ? p.schema : null);
+    const type = schemaType(p.schema || (p.type ? { type: p.type, items: p.items } : null));
+
+    const badges = [`<span class="param-badge is-in">${escapeHtml(p.in)}</span>`];
+    if (type && type !== "any") badges.push(`<span class="param-badge is-type">${escapeHtml(type)}</span>`);
+    badges.push(p.required
+      ? '<span class="param-badge is-required">required</span>'
+      : '<span class="param-badge is-optional">optional</span>');
+
+    const enumValues = Array.isArray(schema?.enum) ? schema.enum : (Array.isArray(p.enum) ? p.enum : []);
+    if (enumValues.length) {
+      const shown = enumValues.slice(0, 4).map((v) => paramInlineValue(v)).join(" | ");
+      const suffix = enumValues.length > 4 ? " | …" : "";
+      badges.push(`<span class="param-badge" title="${escapeHtml(enumValues.map((v) => paramInlineValue(v)).join(", "))}">enum: ${escapeHtml(shown)}${suffix}</span>`);
+    }
+
+    const defaultValue = schema?.default !== undefined ? schema.default : p.default;
+    if (defaultValue !== undefined) {
+      badges.push(`<span class="param-badge">default: ${escapeHtml(paramInlineValue(defaultValue))}</span>`);
+    }
+
+    if (p.deprecated) badges.push('<span class="param-badge is-deprecated">deprecated</span>');
+
+    const description = p.description
+      ? `<div class="param-desc">${formatDescriptionCompact(p.description, "")}</div>`
+      : "";
+
+    return `
+      <div class="param-row">
+        <div class="param-head">
+          <span class="param-name">${escapeHtml(p.name)}</span>
+          ${badges.join("")}
+        </div>
+        ${description}
+      </div>`;
+  }
+
+  function paramsSection(params) {
     const safeParams = (Array.isArray(params) ? params : []).filter((p) => {
       if (!p || typeof p !== "object") return false;
       const name = typeof p.name === "string" ? p.name.trim() : "";
@@ -1649,19 +1703,7 @@
     });
 
     if (!safeParams.length) return '<div class="muted">No parameters.</div>';
-    const rows = safeParams.map((p) => `
-      <tr>
-        <td><strong>${escapeHtml(p.name || "-")}</strong></td>
-        <td>${escapeHtml(p.in || "-")}</td>
-        <td>${escapeHtml(p.schema?.type || p.type || "-")}</td>
-        <td>${escapeHtml(p.required ? "required" : "optional")}</td>
-        <td>${formatDescriptionCompact(p.description || "", "")}</td>
-      </tr>`).join("");
-    return `
-      <table class="kv-table">
-        <thead><tr><th>Name</th><th>In</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
+    return `<div class="param-list">${safeParams.map(paramRow).join("")}</div>`;
   }
 
   function requestBodySection(requestBody) {
@@ -1702,7 +1744,7 @@
       <div class="detail-title">Description</div>
       ${formatDescription(op.description || op.summary || "No description.")}
       <div class="detail-title">Parameters</div>
-      ${tableForParams(op.parameters)}
+      ${paramsSection(op.parameters)}
       <div class="detail-title">Request Body</div>
       ${requestBodySection(op.requestBody)}
       <div class="detail-title">Responses</div>
@@ -1735,12 +1777,17 @@
           <div class="docs-description">${formatDescription(info.description || "Lightweight OpenAPI viewer")}</div>
           ${serverText ? `<div class="docs-subtitle">Server: ${escapeHtml(serverText)}</div>` : ""}
         </div>
-        <div>
-          <input id="api-search" class="search-input" type="text" placeholder="Search endpoints, params, schemas…" />
+      </div>
+      <div class="docs-search-sentinel" aria-hidden="true"></div>
+      <div class="docs-search-bar">
+        <div class="docs-search-inner">
+          <input id="api-search" class="search-input" type="text" placeholder="Search endpoints, params, schemas…" title="Shortcut: /" />
         </div>
       </div>
       <div id="endpoint-list" class="endpoint-list"></div>
     `;
+
+    bindStickySearch();
 
     const list = root.querySelector("#endpoint-list");
 
@@ -1778,6 +1825,57 @@
     list.appendChild(listFrag);
 
     setStatus(`Loaded ${operations.length} endpoint(s).`);
+  }
+
+  // ── Sticky search bar ────────────────────────────────────────────────────
+
+  let stickySearchObserver = null;
+  let stickySearchResize = null;
+
+  function bindStickySearch() {
+    if (stickySearchObserver) {
+      stickySearchObserver.disconnect();
+      stickySearchObserver = null;
+    }
+    if (stickySearchResize) {
+      stickySearchResize.disconnect();
+      stickySearchResize = null;
+    }
+
+    const scrollRoot = document.querySelector(".docs-panel-body");
+    const sentinel = document.querySelector(".docs-search-sentinel");
+    const bar = document.querySelector(".docs-search-bar");
+    const inner = document.querySelector(".docs-search-inner");
+    if (!scrollRoot || !sentinel || !bar || !inner) return;
+
+    if (typeof IntersectionObserver !== "function") return;
+
+    // Pin the resting width (in px) so the shrink-to-pill transition animates
+    // across its full duration instead of snapping at the end. Measured from
+    // the container (whose width is stable) rather than the inner element,
+    // which is itself mid-animation while (un)sticking.
+    const updateRestWidth = () => {
+      const style = getComputedStyle(bar);
+      const padX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+      const w = Math.round(bar.clientWidth - padX);
+      if (w > 0) inner.style.setProperty("--search-rest-max", `${w}px`);
+    };
+    updateRestWidth();
+
+    if (typeof ResizeObserver === "function") {
+      stickySearchResize = new ResizeObserver(updateRestWidth);
+      stickySearchResize.observe(bar);
+    }
+
+    stickySearchObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          bar.classList.toggle("is-stuck", !entry.isIntersecting);
+        }
+      },
+      { root: scrollRoot, threshold: 0 }
+    );
+    stickySearchObserver.observe(sentinel);
   }
 
   // ── Docs event delegation (bound once) ───────────────────────────────────
@@ -1908,6 +2006,18 @@
       });
       setStatus(visible === 0 ? "No matches." : `Showing ${visible} endpoint(s).`, visible === 0);
     });
+
+    // "/" focuses the endpoint search from anywhere (unless already typing).
+    window.addEventListener("keydown", (event) => {
+      if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      const search = document.getElementById("api-search");
+      if (!search) return;
+      event.preventDefault();
+      search.focus();
+      search.select();
+    });
   }
 
   // ── Copy raw spec ────────────────────────────────────────────────────────
@@ -2003,7 +2113,11 @@
       const editor = document.getElementById("raw-spec-editor");
       const editBtn = document.getElementById("edit-spec-btn");
       if (editor) editor.hidden = true;
-      if (editBtn) { editBtn.textContent = "Edit"; editBtn.classList.remove("is-active"); }
+      if (editBtn) {
+        editBtn.title = "Edit spec inline";
+        editBtn.setAttribute("aria-label", "Edit spec");
+        editBtn.classList.remove("is-active");
+      }
       const pre = document.getElementById("raw-spec");
       if (pre) pre.hidden = false;
     }
@@ -2013,18 +2127,15 @@
     const rawEl = document.getElementById("raw-spec");
     if (rawEl) rawEl.innerHTML = renderRawSpecWithHighlight(rawText);
 
-    activeDiff = null;
-    setDiffButton(null);
-
     if (!window.jsyaml?.load) {
       renderDocsError("YAML parser not found. Reload the extension.");
-      return false;
+      return;
     }
 
     const spec = parseSpec(rawText);
     if (!spec || typeof spec !== "object" || !spec.paths) {
       renderDocsError("Invalid OpenAPI spec – missing paths.");
-      return false;
+      return;
     }
 
     activeSpec = spec;
@@ -2038,7 +2149,6 @@
 
     setSpecVersionTag(specVersion(spec));
     renderDocs(spec);
-    return true;
   }
 
   function loadStoredSpec(stored) {
@@ -2047,466 +2157,7 @@
       setStatus("No spec loaded.", true);
       return;
     }
-    const ok = applyRawSpec(stored.rawText, stored.sourceUrl || "");
-    if (ok) trackSpecSnapshot(stored.rawText, stored.sourceUrl || "");
-  }
-
-  // ── Spec snapshots & diff ────────────────────────────────────────────────
-
-  function isTrackableSpecUrl(url) {
-    return /^(https?|file):/i.test(String(url || "").trim());
-  }
-
-  function trackSpecSnapshot(rawText, sourceUrl) {
-    if (!isTrackableSpecUrl(sourceUrl)) return;
-
-    chrome.storage.local.get([SNAPSHOTS_KEY], (data) => {
-      const snapshots = data?.[SNAPSHOTS_KEY] && typeof data[SNAPSHOTS_KEY] === "object"
-        ? data[SNAPSHOTS_KEY]
-        : {};
-      const now = Date.now();
-      const entry = snapshots[sourceUrl];
-      const oversize = rawText.length > SNAPSHOT_MAX_CHARS;
-
-      let previous = null;
-      if (entry?.current?.text === rawText) {
-        previous = entry.previous || null;
-        entry.lastOpenedAt = now;
-      } else {
-        previous = entry?.current || null;
-        snapshots[sourceUrl] = {
-          current: oversize ? { oversize: true, savedAt: now } : { text: rawText, savedAt: now },
-          previous: previous?.text ? previous : null,
-          lastOpenedAt: now
-        };
-      }
-
-      pruneSnapshots(snapshots);
-      chrome.storage.local.set({ [SNAPSHOTS_KEY]: snapshots });
-
-      if (previous?.text && previous.text !== rawText && !oversize) {
-        computeSpecDiff(previous.text, rawText, previous.savedAt);
-      }
-    });
-  }
-
-  function pruneSnapshots(snapshots) {
-    const urls = Object.keys(snapshots);
-    if (urls.length <= SNAPSHOT_MAX_ENTRIES) return;
-    urls
-      .sort((a, b) => (snapshots[a]?.lastOpenedAt || 0) - (snapshots[b]?.lastOpenedAt || 0))
-      .slice(0, urls.length - SNAPSHOT_MAX_ENTRIES)
-      .forEach((url) => { delete snapshots[url]; });
-  }
-
-  function computeSpecDiff(oldText, newText, oldSavedAt) {
-    const oldSpec = parseSpec(oldText);
-    const newSpec = parseSpec(newText);
-    if (!oldSpec || !newSpec || typeof oldSpec !== "object" || typeof newSpec !== "object") return;
-
-    const changes = diffSpecs(oldSpec, newSpec);
-    if (!changes.length) return;
-
-    activeDiff = { changes, oldSavedAt };
-    setDiffButton(activeDiff);
-  }
-
-  function diffSpecs(oldSpec, newSpec) {
-    const changes = [];
-    const add = (level, method, path, text) => {
-      if (changes.length < DIFF_MAX_ITEMS) changes.push({ level, method, path, text });
-    };
-
-    const oldVersion = oldSpec?.info?.version;
-    const newVersion = newSpec?.info?.version;
-    if (oldVersion !== newVersion) {
-      add("info", "", "", `API version changed: ${oldVersion ?? "unset"} → ${newVersion ?? "unset"}`);
-    }
-
-    const oldOps = specOperationsMap(oldSpec);
-    const newOps = specOperationsMap(newSpec);
-
-    for (const [key, oldEntry] of oldOps) {
-      if (!newOps.has(key)) add("breaking", oldEntry.method, oldEntry.path, "Endpoint removed");
-    }
-
-    for (const [key, newEntry] of newOps) {
-      const oldEntry = oldOps.get(key);
-      if (!oldEntry) {
-        add("info", newEntry.method, newEntry.path, "Endpoint added");
-        continue;
-      }
-      diffOperation(oldSpec, newSpec, oldEntry, newEntry, add);
-    }
-
-    return changes;
-  }
-
-  function derefNode(spec, node, depth = 0) {
-    if (!node || typeof node !== "object" || depth > 8) return node;
-    if (typeof node.$ref !== "string") return node;
-    const target = pointerGet(spec, node.$ref);
-    if (!target || typeof target !== "object") return node;
-    const merged = { ...target, ...node };
-    delete merged.$ref;
-    return derefNode(spec, merged, depth + 1);
-  }
-
-  function specOperationsMap(spec) {
-    const map = new Map();
-    const paths = spec?.paths && typeof spec.paths === "object" ? spec.paths : {};
-    for (const [pathKey, rawItem] of Object.entries(paths)) {
-      const pathItem = derefNode(spec, rawItem);
-      if (!pathItem || typeof pathItem !== "object") continue;
-      const shared = Array.isArray(pathItem.parameters) ? pathItem.parameters : [];
-      for (const method of HTTP_METHODS) {
-        const op = pathItem[method];
-        if (!op || typeof op !== "object") continue;
-        map.set(`${method} ${pathKey}`, {
-          method,
-          path: pathKey,
-          op,
-          params: mergeDiffParams(spec, shared, op.parameters)
-        });
-      }
-    }
-    return map;
-  }
-
-  function mergeDiffParams(spec, pathParams, opParams) {
-    const map = new Map();
-    for (const source of [pathParams, opParams]) {
-      if (!Array.isArray(source)) continue;
-      for (const raw of source) {
-        const param = derefNode(spec, raw);
-        if (!param || typeof param !== "object" || !param.name || !param.in) continue;
-        map.set(`${String(param.in).toLowerCase()}::${String(param.name).toLowerCase()}`, param);
-      }
-    }
-    return map;
-  }
-
-  function diffParamType(spec, param) {
-    if (param?.schema) {
-      const canonical = canonicalSchemaForDiff(spec, param.schema);
-      return canonical?.type || "any";
-    }
-    return param?.type || "any";
-  }
-
-  function isParamRequired(param) {
-    return param?.in === "path" || !!param?.required;
-  }
-
-  function diffOperation(oldSpec, newSpec, oldEntry, newEntry, add) {
-    const { method, path } = newEntry;
-
-    for (const [key, oldParam] of oldEntry.params) {
-      if (!newEntry.params.has(key)) {
-        add("breaking", method, path, `Parameter removed: ${oldParam.in} "${oldParam.name}"`);
-      }
-    }
-
-    for (const [key, newParam] of newEntry.params) {
-      const oldParam = oldEntry.params.get(key);
-      if (!oldParam) {
-        const required = isParamRequired(newParam);
-        add(
-          required ? "breaking" : "info",
-          method,
-          path,
-          `${required ? "Required" : "Optional"} parameter added: ${newParam.in} "${newParam.name}"`
-        );
-        continue;
-      }
-
-      const oldType = diffParamType(oldSpec, oldParam);
-      const newType = diffParamType(newSpec, newParam);
-      if (oldType !== newType) {
-        add("breaking", method, path, `Parameter "${newParam.name}" type changed: ${oldType} → ${newType}`);
-      }
-
-      const wasRequired = isParamRequired(oldParam);
-      const nowRequired = isParamRequired(newParam);
-      if (!wasRequired && nowRequired) {
-        add("breaking", method, path, `Parameter "${newParam.name}" is now required`);
-      } else if (wasRequired && !nowRequired) {
-        add("info", method, path, `Parameter "${newParam.name}" is now optional`);
-      }
-    }
-
-    const oldBody = derefNode(oldSpec, oldEntry.op.requestBody);
-    const newBody = derefNode(newSpec, newEntry.op.requestBody);
-    if (oldBody && !newBody) {
-      add("info", method, path, "Request body removed");
-    } else if (!oldBody && newBody) {
-      add(newBody.required ? "breaking" : "info", method, path, `Request body added${newBody.required ? " (required)" : ""}`);
-    } else if (oldBody && newBody) {
-      if (!oldBody.required && newBody.required) add("breaking", method, path, "Request body is now required");
-      diffContent(oldSpec, newSpec, contentOf(oldSpec, oldBody), contentOf(newSpec, newBody), "request body", "request", method, path, add);
-    }
-
-    const oldResponses = oldEntry.op.responses && typeof oldEntry.op.responses === "object" ? oldEntry.op.responses : {};
-    const newResponses = newEntry.op.responses && typeof newEntry.op.responses === "object" ? newEntry.op.responses : {};
-
-    for (const code of Object.keys(oldResponses)) {
-      if (!(code in newResponses)) add("breaking", method, path, `Response ${code} removed`);
-    }
-
-    for (const code of Object.keys(newResponses)) {
-      if (!(code in oldResponses)) {
-        add("info", method, path, `Response ${code} added`);
-        continue;
-      }
-      const oldResponse = derefNode(oldSpec, oldResponses[code]);
-      const newResponse = derefNode(newSpec, newResponses[code]);
-      diffContent(oldSpec, newSpec, contentOf(oldSpec, oldResponse), contentOf(newSpec, newResponse), `response ${code}`, "response", method, path, add);
-    }
-
-    if (!oldEntry.op.deprecated && newEntry.op.deprecated) {
-      add("info", method, path, "Endpoint marked deprecated");
-    }
-  }
-
-  function contentOf(spec, node) {
-    const resolved = derefNode(spec, node);
-    if (!resolved || typeof resolved !== "object") return {};
-    if (resolved.content && typeof resolved.content === "object") return resolved.content;
-    if (resolved.schema) return { "": { schema: resolved.schema } };
-    return {};
-  }
-
-  function diffContent(oldSpec, newSpec, oldContent, newContent, label, direction, method, path, add) {
-    const oldKeys = Object.keys(oldContent);
-    const newKeys = Object.keys(newContent);
-
-    for (const mediaType of oldKeys) {
-      if (mediaType && !newContent[mediaType] && newKeys.length) {
-        add("breaking", method, path, `Media type "${mediaType}" removed from ${label}`);
-      }
-    }
-    for (const mediaType of newKeys) {
-      if (mediaType && !oldContent[mediaType] && oldKeys.length) {
-        add("info", method, path, `Media type "${mediaType}" added to ${label}`);
-      }
-    }
-
-    const pairs = [];
-    for (const mediaType of newKeys) {
-      if (oldContent[mediaType]) pairs.push([oldContent[mediaType], newContent[mediaType]]);
-    }
-    if (!pairs.length && oldKeys.length && newKeys.length) {
-      pairs.push([oldContent[oldKeys[0]], newContent[newKeys[0]]]);
-    }
-
-    for (const [oldMedia, newMedia] of pairs) {
-      const oldSchema = canonicalSchemaForDiff(oldSpec, oldMedia?.schema);
-      const newSchema = canonicalSchemaForDiff(newSpec, newMedia?.schema);
-      diffSchemas(oldSchema, newSchema, "", label, direction, method, path, add);
-    }
-  }
-
-  function canonicalSchemaForDiff(spec, schema, depth = 0, refTrail = new Set()) {
-    if (!schema || typeof schema !== "object") return null;
-    if (depth > 7) return { type: "(depth-capped)" };
-
-    if (typeof schema.$ref === "string") {
-      const tail = schema.$ref.split("/").pop() || schema.$ref;
-      if (refTrail.has(schema.$ref)) return { type: `(circular ${tail})` };
-      const target = pointerGet(spec, schema.$ref);
-      if (!target || typeof target !== "object") return { type: `(${tail})` };
-      const trail = new Set(refTrail);
-      trail.add(schema.$ref);
-      const merged = { ...target, ...schema };
-      delete merged.$ref;
-      return canonicalSchemaForDiff(spec, merged, depth, trail);
-    }
-
-    const out = {};
-    const required = new Set();
-    let source = schema;
-
-    if (Array.isArray(schema.allOf) && schema.allOf.length) {
-      const mergedProps = {};
-      let mergedType = "";
-      for (const part of schema.allOf) {
-        const canonical = canonicalSchemaForDiff(spec, part, depth, refTrail);
-        if (!canonical) continue;
-        if (!mergedType && canonical.type) mergedType = canonical.type;
-        if (canonical.properties) Object.assign(mergedProps, canonical.properties);
-        (canonical.required || []).forEach((name) => required.add(name));
-      }
-      if (Object.keys(mergedProps).length) out.properties = mergedProps;
-      if (mergedType) out.type = mergedType;
-      source = { ...schema };
-      delete source.allOf;
-    }
-
-    if (source.type) out.type = String(source.type);
-    if (source.format) out.format = String(source.format);
-    if (source.nullable === true) out.nullable = true;
-    if (Array.isArray(source.enum)) out.enum = source.enum.map((v) => String(v)).sort();
-    if (Array.isArray(source.required)) source.required.forEach((name) => required.add(String(name)));
-
-    if (source.properties && typeof source.properties === "object") {
-      out.properties = out.properties || {};
-      for (const [name, child] of Object.entries(source.properties)) {
-        out.properties[name] = canonicalSchemaForDiff(spec, child, depth + 1, refTrail);
-      }
-    }
-
-    if (source.items) out.items = canonicalSchemaForDiff(spec, source.items, depth + 1, refTrail);
-
-    if (!out.type) {
-      if (out.properties && Object.keys(out.properties).length) out.type = "object";
-      else if (out.items) out.type = "array";
-    }
-    if (required.size) out.required = Array.from(required).sort();
-
-    return out;
-  }
-
-  function joinPropPath(base, name) {
-    return base ? `${base}.${name}` : name;
-  }
-
-  function diffSchemas(oldSchema, newSchema, propPath, label, direction, method, path, add) {
-    if (!oldSchema && !newSchema) return;
-    const where = propPath ? `${label} property "${propPath}"` : label;
-
-    if (oldSchema && !newSchema) {
-      add("breaking", method, path, `Schema removed from ${where}`);
-      return;
-    }
-    if (!oldSchema && newSchema) {
-      add("info", method, path, `Schema added to ${where}`);
-      return;
-    }
-
-    if (oldSchema.type && newSchema.type && oldSchema.type !== newSchema.type) {
-      add("breaking", method, path, `Type changed in ${where}: ${oldSchema.type} → ${newSchema.type}`);
-      return;
-    }
-
-    if ((oldSchema.format || newSchema.format) && oldSchema.format !== newSchema.format) {
-      add("info", method, path, `Format changed in ${where}: ${oldSchema.format || "none"} → ${newSchema.format || "none"}`);
-    }
-
-    if (oldSchema.enum || newSchema.enum) {
-      const oldEnum = new Set(oldSchema.enum || []);
-      const newEnum = new Set(newSchema.enum || []);
-      const removed = [...oldEnum].filter((v) => !newEnum.has(v));
-      const added = [...newEnum].filter((v) => !oldEnum.has(v));
-      if (removed.length) add("breaking", method, path, `Enum value(s) removed in ${where}: ${removed.join(", ")}`);
-      if (added.length) add("info", method, path, `Enum value(s) added in ${where}: ${added.join(", ")}`);
-    }
-
-    const oldRequired = new Set(oldSchema.required || []);
-    const newRequired = new Set(newSchema.required || []);
-    for (const name of newRequired) {
-      if (!oldRequired.has(name)) {
-        add(direction === "request" ? "breaking" : "info", method, path, `Property "${joinPropPath(propPath, name)}" is now required in ${label}`);
-      }
-    }
-    for (const name of oldRequired) {
-      if (!newRequired.has(name)) {
-        add(direction === "response" ? "breaking" : "info", method, path, `Property "${joinPropPath(propPath, name)}" is no longer required in ${label}`);
-      }
-    }
-
-    const oldProps = oldSchema.properties || {};
-    const newProps = newSchema.properties || {};
-    for (const name of Object.keys(oldProps)) {
-      if (!(name in newProps)) {
-        add("breaking", method, path, `Property removed from ${label}: "${joinPropPath(propPath, name)}"`);
-      }
-    }
-    for (const name of Object.keys(newProps)) {
-      if (!(name in oldProps)) {
-        const requiredNow = newRequired.has(name);
-        add(
-          direction === "request" && requiredNow ? "breaking" : "info",
-          method,
-          path,
-          `Property added to ${label}: "${joinPropPath(propPath, name)}"${requiredNow ? " (required)" : ""}`
-        );
-        continue;
-      }
-      diffSchemas(oldProps[name], newProps[name], joinPropPath(propPath, name), label, direction, method, path, add);
-    }
-
-    if (oldSchema.items || newSchema.items) {
-      diffSchemas(oldSchema.items, newSchema.items, propPath ? `${propPath}[]` : "[]", label, direction, method, path, add);
-    }
-  }
-
-  // ── Diff UI ──────────────────────────────────────────────────────────────
-
-  function setDiffButton(diff) {
-    const btn = document.getElementById("diff-btn");
-    if (!btn) return;
-    if (!diff || !diff.changes.length) {
-      btn.hidden = true;
-      return;
-    }
-    const breakingCount = diff.changes.filter((c) => c.level === "breaking").length;
-    btn.hidden = false;
-    btn.classList.toggle("has-breaking", breakingCount > 0);
-    btn.title = breakingCount
-      ? `${diff.changes.length} change(s) since last visit, ${breakingCount} breaking`
-      : `${diff.changes.length} change(s) since last visit`;
-    const countEl = document.getElementById("diff-btn-count");
-    if (countEl) countEl.textContent = String(diff.changes.length);
-  }
-
-  function setDiffModalOpen(open) {
-    const modal = document.getElementById("diff-modal");
-    const backdrop = document.getElementById("diff-backdrop");
-    if (!modal || !backdrop) return;
-    if (open) {
-      if (!activeDiff) return;
-      renderDiffModal();
-    }
-    modal.hidden = !open;
-    backdrop.hidden = !open;
-  }
-
-  function renderDiffModal() {
-    const metaEl = document.getElementById("diff-modal-meta");
-    const listEl = document.getElementById("diff-modal-list");
-    if (!listEl || !activeDiff) return;
-
-    const { changes, oldSavedAt } = activeDiff;
-    if (metaEl) {
-      const when = oldSavedAt ? new Date(oldSavedAt).toLocaleString() : "";
-      metaEl.textContent = when
-        ? `Compared with the version seen on ${when}.`
-        : "Compared with the previously seen version.";
-    }
-
-    const breaking = changes.filter((c) => c.level === "breaking");
-    const others = changes.filter((c) => c.level !== "breaking");
-
-    const itemHtml = (change) => `
-      <div class="diff-item">
-        <span class="diff-item-badge ${change.level === "breaking" ? "is-breaking" : "is-info"}">${change.level === "breaking" ? "BREAKING" : "CHANGE"}</span>
-        ${change.method ? `<span class="method-pill method-${escapeHtml(change.method)}">${escapeHtml(change.method.toUpperCase())}</span>` : ""}
-        ${change.path ? `<span class="diff-item-path">${escapeHtml(change.path)}</span>` : ""}
-        <span class="diff-item-text">${escapeHtml(change.text)}</span>
-      </div>`;
-    const sectionHtml = (title, items) =>
-      items.length ? `<div class="diff-section-title">${escapeHtml(title)} (${items.length})</div>${items.map(itemHtml).join("")}` : "";
-
-    listEl.innerHTML =
-      sectionHtml("Breaking changes", breaking) +
-      sectionHtml("Other changes", others) +
-      (changes.length >= DIFF_MAX_ITEMS ? `<div class="diff-truncated">Report truncated at ${DIFF_MAX_ITEMS} items.</div>` : "");
-  }
-
-  function bindDiffUi() {
-    document.getElementById("diff-btn")?.addEventListener("click", () => setDiffModalOpen(true));
-    document.getElementById("diff-modal-close")?.addEventListener("click", () => setDiffModalOpen(false));
-    document.getElementById("diff-backdrop")?.addEventListener("click", () => setDiffModalOpen(false));
+    applyRawSpec(stored.rawText, stored.sourceUrl || "");
   }
 
   // ── File upload ──────────────────────────────────────────────────────────
@@ -2571,7 +2222,7 @@
           <div class="file-result-head">
             <span class="file-result-icon">${r.valid ? "✓" : "✗"}</span>
             <span class="file-result-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</span>
-            ${r.valid ? `<button class="copy-btn" data-action="load-file" data-file-name="${escapeHtml(r.name)}">Load</button>` : ""}
+            ${r.valid ? `<button class="copy-btn icon-btn-square" data-action="load-file" data-file-name="${escapeHtml(r.name)}" title="Load spec" aria-label="Load spec">${ICON_DOWNLOAD}</button>` : ""}
           </div>
           ${!r.valid ? `<div class="file-result-error">${escapeHtml(r.error)}</div>` : ""}
         </div>
@@ -2605,7 +2256,8 @@
       editor.value = rawSpecText;
       pre.hidden = true;
       editor.hidden = false;
-      btn.textContent = "Done";
+      btn.title = "Finish editing";
+      btn.setAttribute("aria-label", "Finish editing");
       btn.classList.add("is-active");
       editor.focus();
     } else {
@@ -2615,7 +2267,8 @@
       pre.innerHTML = renderRawSpecWithHighlight(text);
       pre.hidden = false;
       editor.hidden = true;
-      btn.textContent = "Edit";
+      btn.title = "Edit spec inline";
+      btn.setAttribute("aria-label", "Edit spec");
       btn.classList.remove("is-active");
       // Show validation status without wiping the docs panel
       const result = validateSpecText(text);
@@ -2683,7 +2336,6 @@
     bindPanelResize();
     bindFileUpload();
     bindInlineEditor();
-    bindDiffUi();
 
     // React to theme changes from popup without reloading.
     chrome.storage.onChanged.addListener((changes) => {

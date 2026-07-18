@@ -17,10 +17,10 @@
         </div>
         <a id="source-url" class="frame-url"></a>
         <div class="frame-actions">
-          <button id="diff-btn" class="icon-btn diff-btn" type="button" title="View changes since last visit" hidden>
-            Δ Changes <span id="diff-btn-count" class="diff-btn-count">0</span>
+          <button id="theme-toggle" class="icon-btn icon-btn-square" title="Switch to dark theme" aria-label="Switch to dark theme">
+            <svg class="icon-default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            <svg class="icon-alt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
           </button>
-          <button id="theme-toggle" class="icon-btn" title="Toggle theme">☾ Dark</button>
         </div>
       </header>
 
@@ -34,10 +34,18 @@
               <span class="panel-title">RAW SPEC</span>
             </div>
             <div class="panel-head-right">
-              <button id="upload-file-btn" class="copy-btn" title="Upload spec file from device">Upload</button>
+              <button id="upload-file-btn" class="copy-btn icon-btn-square" title="Upload spec file from device" aria-label="Upload spec file">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+              </button>
               <input id="file-input" type="file" accept=".json,.yaml,.yml" multiple hidden>
-              <button id="edit-spec-btn" class="copy-btn" title="Edit spec inline">Edit</button>
-              <button id="copy-raw-btn" class="copy-btn" title="Copy entire spec">Copy Spec</button>
+              <button id="edit-spec-btn" class="copy-btn icon-btn-square" title="Edit spec inline" aria-label="Edit spec">
+                <svg class="icon-default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                <svg class="icon-alt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+              <button id="copy-raw-btn" class="copy-btn icon-btn-square" title="Copy entire spec" aria-label="Copy spec">
+                <svg class="icon-default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <svg class="icon-alt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
               <span class="panel-tag">DATA</span>
             </div>
           </div>
@@ -86,11 +94,15 @@
     <aside id="recent-drawer" class="recent-drawer" aria-hidden="true">
       <div class="recent-drawer-head">
         <div class="recent-drawer-title">Recent specs</div>
-        <button id="recent-drawer-close" class="icon-btn" type="button" title="Close">Close</button>
+        <button id="recent-drawer-close" class="icon-btn icon-btn-square" type="button" title="Close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
       </div>
       <div id="viewer-recent-list" class="viewer-recent-list"></div>
       <div class="recent-drawer-foot">
-        <button id="viewer-clear-recent" class="copy-btn" type="button" title="Clear all recent specs">Clear all</button>
+        <button id="viewer-clear-recent" class="copy-btn icon-btn-square" type="button" title="Clear all recent specs" aria-label="Clear all recent specs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        </button>
       </div>
     </aside>
 
@@ -101,20 +113,11 @@
     <div id="file-modal" class="file-modal" role="dialog" aria-modal="true" aria-labelledby="file-modal-title" hidden>
       <div class="file-modal-head">
         <span id="file-modal-title" class="file-modal-title">Upload Results</span>
-        <button id="file-modal-close" class="icon-btn" type="button" title="Close">✕</button>
+        <button id="file-modal-close" class="icon-btn icon-btn-square" type="button" title="Close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
       </div>
       <div id="file-modal-list" class="file-modal-list"></div>
-    </div>
-
-    <!-- ── Spec diff modal ────────────────────────────────────────────────── -->
-    <div id="diff-backdrop" class="confirm-backdrop" hidden></div>
-    <div id="diff-modal" class="diff-modal" role="dialog" aria-modal="true" aria-labelledby="diff-modal-title" hidden>
-      <div class="file-modal-head">
-        <span id="diff-modal-title" class="file-modal-title">What changed</span>
-        <button id="diff-modal-close" class="icon-btn" type="button" title="Close">✕</button>
-      </div>
-      <div id="diff-modal-meta" class="diff-modal-meta"></div>
-      <div id="diff-modal-list" class="diff-modal-list"></div>
     </div>
 
     <!-- ── Clear-all confirmation modal ───────────────────────────────────── -->
