@@ -2,6 +2,11 @@
 
 All notable changes to OpenAPI Lens are documented here.
 
+## [1.5.0] - 2026-07-18
+
+### Added
+- **"What's new" toast** — After the extension updates (via the Chrome Web Store or a reload), the viewer shows a dismissible bottom toast highlighting what's new since your last version. The highlights are read straight from this changelog at runtime — no per-release list is maintained in code. It appears once per version, is skipped on a fresh install, and can be dismissed with the close button, "Got it", or Escape. Detection is a lightweight version check on open — no background worker and no new permissions.
+
 ## [1.4.0] - 2026-07-16
 
 ### Added

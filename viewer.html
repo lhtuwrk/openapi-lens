@@ -131,6 +131,21 @@
       </div>
     </div>
 
+    <!-- ── What's new toast ───────────────────────────────────────────────── -->
+    <div id="whatsnew-toast" class="whatsnew-toast" role="status" aria-live="polite" hidden>
+      <div class="whatsnew-head">
+        <span class="whatsnew-badge">NEW</span>
+        <span class="whatsnew-title" id="whatsnew-title">What's new</span>
+        <button id="whatsnew-close" class="icon-btn icon-btn-square whatsnew-close" type="button" title="Dismiss" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <ul class="whatsnew-list" id="whatsnew-list"></ul>
+      <div class="whatsnew-foot">
+        <button id="whatsnew-dismiss" class="copy-btn" type="button">Got it</button>
+      </div>
+    </div>
+
     <script src="libs/js-yaml.min.js"></script>
     <script src="viewer.js"></script>
   </body>

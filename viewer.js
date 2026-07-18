@@ -6,6 +6,8 @@
   const ICON_CHECK = `<svg class="icon-alt" ${SVG_OPEN}><polyline points="20 6 9 17 4 12"/></svg>`;
   const ICON_DOWNLOAD = `<svg ${SVG_OPEN}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
   const RECENT_SPECS_KEY = "recentSpecs";
+  const LAST_SEEN_VERSION_KEY = "lastSeenVersion";
+  const WHATS_NEW_MAX_ITEMS = 6;
   const MAX_RECENT_SPECS = 15;
   const SKIP_VIEWER_PARAM = "oal_skip_viewer";
   const endpointStore = new Map();
@@ -276,6 +278,7 @@
         setConfirmModalOpen(false);
         setRecentDrawerOpen(false);
         setFileModalOpen(false);
+        dismissWhatsNew();
         if (isEditMode) setEditMode(false);
       }
     });
@@ -2309,6 +2312,101 @@
 
   // ── Bootstrap ────────────────────────────────────────────────────────────
 
+  // ── What's new toast ───────────────────────────────────────────────────────
+  // Highlights are read from the bundled CHANGELOG.md at runtime, so there is
+  // no per-release list to maintain in code — the changelog is the source.
+
+  function stripInlineMarkdown(text) {
+    return String(text)
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .trim();
+  }
+
+  // Collect the headline of each Added/Changed bullet from every changelog
+  // section newer than `sinceVersion` (the changelog is newest-first, so we
+  // walk from the top and stop at the user's previously-seen version).
+  function parseChangelogHighlights(markdown, sinceVersion) {
+    const lines = String(markdown).split(/\r?\n/);
+    const items = [];
+    let section = null;
+
+    for (let i = 0; i < lines.length && items.length < WHATS_NEW_MAX_ITEMS; i++) {
+      const line = lines[i];
+
+      const head = line.match(/^##\s+\[([^\]]+)\]/);
+      if (head) {
+        if (head[1] === sinceVersion) break; // reached what they already had
+        section = null;
+        continue;
+      }
+
+      const sec = line.match(/^###\s+(\w+)/);
+      if (sec) { section = sec[1].toLowerCase(); continue; }
+      if (section !== "added" && section !== "changed") continue;
+
+      const bullet = line.match(/^-\s+(.*)$/); // top-level bullet only (no indent)
+      if (!bullet) continue;
+      const bold = bullet[1].match(/\*\*([^*]+)\*\*/);
+      const headline = bold ? bold[1].trim() : stripInlineMarkdown(bullet[1].split(/\s[—-]\s/)[0]);
+      if (headline) items.push(headline);
+    }
+    return items;
+  }
+
+  function checkWhatsNew() {
+    let current;
+    try { current = chrome.runtime.getManifest?.()?.version; } catch (_) { return; }
+    if (!current) return;
+
+    chrome.storage.local.get([LAST_SEEN_VERSION_KEY], (data) => {
+      const prev = data?.[LAST_SEEN_VERSION_KEY];
+      if (prev === current) return;
+
+      // Record the current version so the toast only appears once per version.
+      chrome.storage.local.set({ [LAST_SEEN_VERSION_KEY]: current });
+
+      // Skip on a fresh install (no previous version to compare against).
+      if (!prev) return;
+
+      let url;
+      try { url = chrome.runtime.getURL("CHANGELOG.md"); } catch (_) { return; }
+
+      fetch(url)
+        .then((res) => (res.ok ? res.text() : Promise.reject()))
+        .then((md) => {
+          const items = parseChangelogHighlights(md, prev);
+          if (items.length) showWhatsNewToast(current, items);
+        })
+        .catch(() => { /* no changelog available — skip the toast silently */ });
+    });
+  }
+
+  function showWhatsNewToast(version, items) {
+    const toast = document.getElementById("whatsnew-toast");
+    const titleEl = document.getElementById("whatsnew-title");
+    const listEl = document.getElementById("whatsnew-list");
+    if (!toast || !listEl || !items?.length) return;
+
+    if (titleEl) titleEl.textContent = `What's new in v${version}`;
+    listEl.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+    toast.hidden = false;
+    requestAnimationFrame(() => toast.classList.add("is-visible"));
+  }
+
+  function dismissWhatsNew() {
+    const toast = document.getElementById("whatsnew-toast");
+    if (!toast || toast.hidden) return;
+    toast.classList.remove("is-visible");
+    setTimeout(() => { toast.hidden = true; }, 250);
+  }
+
+  function bindWhatsNew() {
+    document.getElementById("whatsnew-close")?.addEventListener("click", dismissWhatsNew);
+    document.getElementById("whatsnew-dismiss")?.addEventListener("click", dismissWhatsNew);
+  }
+
   function init() {
     setAppVersion();
     setStatusAuthor();
@@ -2336,6 +2434,8 @@
     bindPanelResize();
     bindFileUpload();
     bindInlineEditor();
+    bindWhatsNew();
+    checkWhatsNew();
 
     // React to theme changes from popup without reloading.
     chrome.storage.onChanged.addListener((changes) => {
