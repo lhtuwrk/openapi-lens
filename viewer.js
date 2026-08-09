@@ -838,6 +838,42 @@
       resolved = merged;
     }
 
+    if (Array.isArray(resolved.oneOf) && resolved.oneOf.length) {
+      const firstPart = resolveSchemaRef(resolved.oneOf[0], refTrail);
+      if (firstPart && typeof firstPart === "object") {
+        const withoutOneOf = { ...resolved };
+        delete withoutOneOf.oneOf;
+
+        resolved = {
+          ...firstPart,
+          ...withoutOneOf,
+          properties: {
+            ...(firstPart.properties || {}),
+            ...((withoutOneOf.properties && typeof withoutOneOf.properties === "object") ? withoutOneOf.properties : {})
+          },
+          required: Array.from(new Set([...(Array.isArray(firstPart.required) ? firstPart.required : []), ...(Array.isArray(withoutOneOf.required) ? withoutOneOf.required : [])]))
+        };
+      }
+    }
+
+    if (Array.isArray(resolved.anyOf) && resolved.anyOf.length) {
+      const firstPart = resolveSchemaRef(resolved.anyOf[0], refTrail);
+      if (firstPart && typeof firstPart === "object") {
+        const withoutAnyOf = { ...resolved };
+        delete withoutAnyOf.anyOf;
+
+        resolved = {
+          ...firstPart,
+          ...withoutAnyOf,
+          properties: {
+            ...(firstPart.properties || {}),
+            ...((withoutAnyOf.properties && typeof withoutAnyOf.properties === "object") ? withoutAnyOf.properties : {})
+          },
+          required: Array.from(new Set([...(Array.isArray(firstPart.required) ? firstPart.required : []), ...(Array.isArray(withoutAnyOf.required) ? withoutAnyOf.required : [])]))
+        };
+      }
+    }
+
     return resolved;
   }
 

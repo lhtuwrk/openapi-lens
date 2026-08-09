@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenAPI Lens Assets Generator - Themes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+  <style>
+    /* Base Page Styles */
+    body { background: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; margin: 0; padding: 40px; }
+    h1 { text-align: center; margin-bottom: 40px; font-weight: 600; letter-spacing: -0.02em; }
+    .theme-container { margin-bottom: 120px; padding-bottom: 80px; border-bottom: 1px solid #334155; }
+    .theme-container:last-child { border-bottom: none; }
+    .theme-header { text-align: center; margin-bottom: 50px; }
+    .theme-title { font-size: 26px; font-weight: 700; margin-bottom: 10px; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.1em; }
+    .theme-header p { color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+    
+    .tiles-wrapper { display: flex; flex-direction: column; align-items: center; gap: 60px; }
+    .btn-container { text-align: center; margin-top: 24px; }
+    .btn { padding: 14px 28px; background: #3b82f6; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 15px; transition: background 0.2s; }
+    .btn:hover { background: #2563eb; }
+
+    /* Tile Base Styles & Variables */
+    .store-tile {
+      position: relative; overflow: hidden; background: var(--color-bg); color: var(--color-text-primary);
+      box-sizing: border-box; font-family: var(--font-body);
+    }
+    .store-tile * { box-sizing: border-box; }
+
+    /* Small Tile */
+    .tile-small { width: 440px; height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border: 1px solid var(--color-border); }
+    .sm-logo-box { width: 56px; height: 56px; background: var(--color-surface); border: 2px solid var(--color-border-light); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; z-index: 2; box-shadow: var(--shadow); }
+    .sm-logo-box svg { width: 28px; height: 28px; fill: var(--color-text-primary); }
+    .sm-seo { font-size: 12px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; letter-spacing: 0.1em; z-index: 2; font-family: var(--font-body); }
+    .sm-title { font-size: 42px; font-weight: 700; line-height: 1.1; margin: 8px 0; font-family: var(--font-display); z-index: 2; letter-spacing: var(--tracking-display); }
+    .sm-badge { background: var(--color-surface); border: 1px solid var(--color-border); padding: 6px 16px; border-radius: 99px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--color-text-secondary); z-index: 2; }
+    .sm-badge svg { width: 14px; height: 14px; stroke: var(--color-success); }
+    
+    /* Marquee Tile */
+    .marquee-wrapper { transform: scale(0.75); transform-origin: top center; margin-bottom: -140px; }
+    .tile-marquee { width: 1400px; height: 560px; display: flex; align-items: center; border: 1px solid var(--color-border); }
+    .mq-glow { position: absolute; width: 800px; height: 800px; background: var(--color-accent); filter: blur(200px); opacity: var(--glow-opacity); top: -300px; right: -100px; border-radius: 50%; z-index: 0; pointer-events: none; }
+    .mq-left { flex: 0 0 640px; padding-left: 100px; display: flex; flex-direction: column; z-index: 2; }
+    .mq-seo-badge { display: inline-flex; align-items: center; padding: 8px 18px; background: var(--color-accent-subtle); border: 1px solid var(--color-border-light); border-radius: 99px; font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: var(--color-accent); margin-bottom: 24px; width: fit-content; }
+    .mq-title { font-size: 76px; font-weight: 700; line-height: 1.05; margin-bottom: 24px; font-family: var(--font-display); letter-spacing: var(--tracking-display); }
+    .mq-desc { font-size: 22px; line-height: 1.6; color: var(--color-text-secondary); margin-bottom: 40px; max-width: 500px; }
+    .mq-features { display: flex; flex-direction: column; gap: 20px; }
+    .mq-feat { display: flex; align-items: center; gap: 16px; font-size: 18px; font-weight: 500; color: var(--color-text-secondary); }
+    .mq-feat .icon { width: 28px; height: 28px; border-radius: 6px; background: var(--color-surface); border: 1px solid var(--color-border-light); display: flex; align-items: center; justify-content: center; color: var(--color-text-primary); }
+    .mq-feat .icon svg { width: 16px; height: 16px; }
+    
+    .mq-right { flex: 1; z-index: 2; display: flex; justify-content: center; padding-right: 60px; }
+    .mockup-app { width: 700px; height: 440px; background: var(--color-surface); border: var(--mockup-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden; }
+    .mockup-header { height: 48px; background: var(--color-bg); display: flex; align-items: center; padding: 0 16px; gap: 16px; border-bottom: 1px solid var(--color-border); }
+    .window-dots { display: flex; gap: 8px; }
+    .window-dots div { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.15); }
+    .mockup-url-bar { flex: 1; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); height: 28px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--color-text-tertiary); }
+    .mockup-body { flex: 1; display: flex; background: var(--color-surface); }
+    .mockup-sidebar { width: 220px; border-right: 1px solid var(--color-border); padding: 24px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; background: var(--color-bg); }
+    .mockup-main { flex: 1; padding: 32px; display: flex; flex-direction: column; gap: 12px; }
+    .endpoint-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 12px 16px; display: flex; align-items: center; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+    .endpoint-card.active { background: var(--color-surface); border-color: var(--color-accent); box-shadow: var(--shadow); }
+    .method-badge { font-weight: 700; font-size: 12px; padding: 4px 8px; border-radius: 4px; min-width: 50px; text-align: center; }
+    
+    /* Screenshot Tile (1280x800) */
+    .sc-wrapper { transform: scale(0.65); transform-origin: top center; margin-bottom: -280px; }
+    .tile-screenshot { width: 1280px; height: 800px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--color-border); position: relative; padding-top: 40px; }
+    .sc-glow { position: absolute; width: 1000px; height: 1000px; background: var(--color-accent); filter: blur(250px); opacity: var(--glow-opacity); top: -200px; z-index: 0; pointer-events: none; border-radius: 50%; }
+    .sc-header { z-index: 2; text-align: center; margin-bottom: 70px; }
+    .sc-title { font-size: 64px; font-weight: 700; margin-bottom: 24px; font-family: var(--font-display); letter-spacing: var(--tracking-display); line-height: 1.1; }
+    .sc-desc { font-size: 24px; color: var(--color-text-secondary); max-width: 800px; margin: 0 auto; }
+    .sc-mockup { transform: scale(1.15); z-index: 2; }
+
+    /* Code Highlighting Variables */
+    .syn-key { color: var(--color-text-secondary); }
+    .syn-str { color: var(--color-success); }
+    .syn-val { color: var(--color-text-primary); }
+    .bg-get { background: var(--color-success-bg); color: var(--color-success); }
+    .bg-post { background: var(--color-accent-subtle); color: var(--color-accent); }
+    .bg-del { background: var(--color-danger-bg); color: var(--color-danger); }
+    .ep-path { color: var(--color-text-primary); font-weight: 600; }
+    .ep-desc { margin-left: auto; color: var(--color-text-tertiary); font-family: var(--font-body); }
+
+    /* --- THEMES (Hallmark Design Principles) --- */
+    
+    .theme-modern {
+      --color-bg: oklch(0.15 0.01 260); 
+      --color-surface: oklch(0.18 0.01 260);
+      --color-text-primary: oklch(0.98 0 0);
+      --color-text-secondary: oklch(0.75 0.01 260);
+      --color-text-tertiary: oklch(0.55 0.01 260);
+      --color-accent: oklch(0.65 0.18 260); /* Clean Blue */
+      --color-accent-subtle: oklch(0.65 0.18 260 / 0.15);
+      --color-border: oklch(0.25 0.01 260);
+      --color-border-light: oklch(0.32 0.01 260);
+      --color-success: oklch(0.70 0.15 160); --color-success-bg: oklch(0.25 0.05 160);
+      --color-danger: oklch(0.65 0.15 20); --color-danger-bg: oklch(0.25 0.05 20);
+      --font-display: 'Inter', sans-serif; --font-body: 'Inter', sans-serif;
+      --radius-sm: 6px; --radius-md: 12px; --radius-lg: 12px;
+      --mockup-border: 1px solid var(--color-border-light);
+      --shadow: 0 8px 24px rgba(0,0,0,0.4);
+      --shadow-lg: 0 24px 80px rgba(0,0,0,0.5);
+      --glow-opacity: 0.15;
+      --tracking-display: -0.04em;
+    }
+
+    .theme-editorial {
+      --color-bg: oklch(0.98 0 0); 
+      --color-surface: oklch(0.96 0 0);
+      --color-text-primary: oklch(0.15 0 0);
+      --color-text-secondary: oklch(0.40 0 0);
+      --color-text-tertiary: oklch(0.60 0 0);
+      --color-accent: oklch(0.45 0.15 20); /* Rust */
+      --color-accent-subtle: oklch(0.45 0.15 20 / 0.1);
+      --color-border: oklch(0.90 0 0);
+      --color-border-light: oklch(0.85 0 0);
+      --color-success: oklch(0.45 0.15 160); --color-success-bg: oklch(0.45 0.15 160 / 0.1);
+      --color-danger: oklch(0.50 0.20 20); --color-danger-bg: oklch(0.50 0.20 20 / 0.1);
+      --font-display: 'Playfair Display', serif; --font-body: 'Inter', sans-serif;
+      --radius-sm: 0px; --radius-md: 0px; --radius-lg: 0px;
+      --mockup-border: 1px solid var(--color-border-light);
+      --shadow: 0 10px 30px rgba(0,0,0,0.05);
+      --shadow-lg: 0 30px 60px rgba(0,0,0,0.08);
+      --glow-opacity: 0.05;
+      --tracking-display: -0.02em;
+    }
+
+    .theme-atmospheric {
+      --color-bg: oklch(0.12 0.02 300); 
+      --color-surface: oklch(0.16 0.03 300);
+      --color-text-primary: oklch(0.98 0 0);
+      --color-text-secondary: oklch(0.7 0.05 300);
+      --color-text-tertiary: oklch(0.5 0.05 300);
+      --color-accent: oklch(0.70 0.2 320); /* Neon Pink */
+      --color-accent-subtle: oklch(0.70 0.2 320 / 0.15);
+      --color-border: oklch(0.20 0.03 300);
+      --color-border-light: oklch(0.25 0.03 300);
+      --color-success: oklch(0.70 0.15 160); --color-success-bg: oklch(0.25 0.05 160);
+      --color-danger: oklch(0.65 0.15 20); --color-danger-bg: oklch(0.25 0.05 20);
+      --font-display: 'Outfit', sans-serif; --font-body: 'Inter', sans-serif;
+      --radius-sm: 12px; --radius-md: 24px; --radius-lg: 24px;
+      --mockup-border: 1px solid var(--color-border-light);
+      --shadow: 0 0 40px var(--color-accent-subtle);
+      --shadow-lg: 0 0 100px var(--color-accent-subtle);
+      --glow-opacity: 0.3;
+      --tracking-display: -0.02em;
+    }
+
+    .theme-brutalist {
+      --color-bg: oklch(0.92 0.15 100); /* Yellow */
+      --color-surface: oklch(1 0 0); /* White */
+      --color-text-primary: oklch(0.05 0 0); 
+      --color-text-secondary: oklch(0.25 0 0);
+      --color-text-tertiary: oklch(0.40 0 0);
+      --color-accent: oklch(0.45 0.2 260); /* Deep Blue */
+      --color-accent-subtle: oklch(1 0 0);
+      --color-border: oklch(0.05 0 0);
+      --color-border-light: oklch(0.05 0 0);
+      --color-success: oklch(0.05 0 0); --color-success-bg: oklch(0.8 0.15 160);
+      --color-danger: oklch(0.05 0 0); --color-danger-bg: oklch(0.7 0.15 20);
+      --font-display: 'JetBrains Mono', monospace; --font-body: 'JetBrains Mono', monospace;
+      --radius-sm: 0px; --radius-md: 0px; --radius-lg: 0px;
+      --mockup-border: 4px solid var(--color-border);
+      --shadow: 6px 6px 0 var(--color-border);
+      --shadow-lg: 16px 16px 0 var(--color-border);
+      --glow-opacity: 0;
+      --tracking-display: -0.05em;
+    }
+    
+    /* Brutalist specific overrides */
+    .theme-brutalist .store-tile { border: 4px solid var(--color-border); }
+    .theme-brutalist .sm-logo-box { border: 4px solid var(--color-border); box-shadow: 6px 6px 0 var(--color-border); }
+    .theme-brutalist .sm-badge { border: 2px solid var(--color-border); box-shadow: 4px 4px 0 var(--color-border); font-weight: 800; }
+    .theme-brutalist .mq-seo-badge { border: 3px solid var(--color-border); box-shadow: 4px 4px 0 var(--color-border); font-weight: 800; background: oklch(1 0 0); }
+    .theme-brutalist .mq-feat .icon { border: 2px solid var(--color-border); box-shadow: 2px 2px 0 var(--color-border); }
+    .theme-brutalist .mockup-header { border-bottom: 4px solid var(--color-border); }
+    .theme-brutalist .mockup-sidebar { border-right: 4px solid var(--color-border); }
+    .theme-brutalist .endpoint-card { border: 2px solid var(--color-border); box-shadow: 4px 4px 0 var(--color-border); }
+    .theme-brutalist .endpoint-card.active { transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--color-accent); border-color: var(--color-accent); }
+    .theme-brutalist .method-badge { border: 2px solid var(--color-border); }
+    .theme-brutalist .mockup-url-bar { border: 2px solid var(--color-border); }
+    .theme-brutalist .tile-screenshot { border: 4px solid var(--color-border); }
+    .theme-brutalist .syn-str { color: oklch(0.4 0.15 160); font-weight: bold; }
+    
+    .theme-technical {
+      --color-bg: oklch(0.1 0 0);
+      --color-surface: oklch(0.15 0 0);
+      --color-text-primary: oklch(0.85 0.15 150);
+      --color-text-secondary: oklch(0.6 0.1 150);
+      --color-text-tertiary: oklch(0.4 0.05 150);
+      --color-accent: oklch(0.9 0.2 150);
+      --color-accent-subtle: oklch(0.9 0.2 150 / 0.1);
+      --color-border: oklch(0.3 0.1 150);
+      --color-border-light: oklch(0.2 0.05 150);
+      --color-success: oklch(0.9 0.2 150); --color-success-bg: oklch(0.9 0.2 150 / 0.1);
+      --color-danger: oklch(0.7 0.2 20); --color-danger-bg: oklch(0.7 0.2 20 / 0.1);
+      --font-display: 'JetBrains Mono', monospace; --font-body: 'JetBrains Mono', monospace;
+      --radius-sm: 0px; --radius-md: 0px; --radius-lg: 0px;
+      --mockup-border: 1px solid var(--color-accent);
+      --shadow: 0 0 10px var(--color-accent-subtle);
+      --shadow-lg: 0 0 20px var(--color-accent-subtle);
+      --glow-opacity: 0.1;
+      --tracking-display: 0;
+    }
+    .theme-technical .store-tile { background-image: radial-gradient(var(--color-border) 1px, transparent 1px); background-size: 20px 20px; }
+
+    .theme-luxury {
+      --color-bg: oklch(0.12 0 0);
+      --color-surface: oklch(0.18 0 0);
+      --color-text-primary: oklch(0.95 0.02 80);
+      --color-text-secondary: oklch(0.7 0.02 80);
+      --color-text-tertiary: oklch(0.5 0.02 80);
+      --color-accent: oklch(0.75 0.12 80);
+      --color-accent-subtle: oklch(0.75 0.12 80 / 0.1);
+      --color-border: oklch(0.25 0.01 80);
+      --color-border-light: oklch(0.20 0.01 80);
+      --color-success: oklch(0.75 0.12 80); --color-success-bg: oklch(0.75 0.12 80 / 0.1);
+      --color-danger: oklch(0.6 0.15 20); --color-danger-bg: oklch(0.6 0.15 20 / 0.1);
+      --font-display: 'Playfair Display', serif; --font-body: 'Inter', sans-serif;
+      --radius-sm: 4px; --radius-md: 8px; --radius-lg: 16px;
+      --mockup-border: 1px solid var(--color-accent);
+      --shadow: 0 10px 40px rgba(0,0,0,0.5);
+      --shadow-lg: 0 20px 60px rgba(0,0,0,0.6);
+      --glow-opacity: 0.05;
+      --tracking-display: 0;
+    }
+
+    .theme-soft {
+      --color-bg: oklch(0.97 0.01 250); 
+      --color-surface: oklch(1 0 0);
+      --color-text-primary: oklch(0.2 0 0);
+      --color-text-secondary: oklch(0.4 0 0);
+      --color-text-tertiary: oklch(0.6 0 0);
+      --color-accent: oklch(0.7 0.12 300);
+      --color-accent-subtle: oklch(0.7 0.12 300 / 0.1);
+      --color-border: oklch(0.9 0.02 250);
+      --color-border-light: oklch(0.95 0.01 250);
+      --color-success: oklch(0.6 0.15 160); --color-success-bg: oklch(0.6 0.15 160 / 0.1);
+      --color-danger: oklch(0.6 0.15 20); --color-danger-bg: oklch(0.6 0.15 20 / 0.1);
+      --font-display: 'Outfit', sans-serif; --font-body: 'Inter', sans-serif;
+      --radius-sm: 16px; --radius-md: 24px; --radius-lg: 32px;
+      --mockup-border: 1px solid var(--color-border);
+      --shadow: 0 12px 32px rgba(100, 110, 140, 0.08);
+      --shadow-lg: 0 24px 64px rgba(100, 110, 140, 0.12);
+      --glow-opacity: 0.2;
+      --tracking-display: -0.02em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>OpenAPI Lens - Chrome Store Assets</h1>
+
+  <div id="themes-root"></div>
+
+  <script>
+    const themes = [
+      { id: 'modern', name: 'Modern Minimal', class: 'theme-modern', desc: 'Dark, electric blue accents, sleek borders. Classic dev-tool look.' },
+      { id: 'editorial', name: 'Editorial', class: 'theme-editorial', desc: 'Light, high contrast, elegant serif headers (Playfair Display). Trustworthy and clean.' },
+      { id: 'atmospheric', name: 'Atmospheric', class: 'theme-atmospheric', desc: 'Deep purple/black, neon pink glowing gradients. Modern AI startup aesthetic.' },
+      { id: 'brutalist', name: 'Brutalist', class: 'theme-brutalist', desc: 'Bright yellow, harsh black borders, monospace typography. High impact, high contrast.' },
+      { id: 'technical', name: 'Technical / Hacker', class: 'theme-technical', desc: 'Dark green, monospace, phosphor glow. For terminal tools.' },
+      { id: 'luxury', name: 'Luxury', class: 'theme-luxury', desc: 'Deep black, gold accents, elegant serif headers. High end.' },
+      { id: 'soft', name: 'Soft Pastel', class: 'theme-soft', desc: 'Warm off-white, soft lavender/peach accents, rounded corners. Playful.' }
+    ];
+
+    const iconCheck = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    const iconLogo = `<svg viewBox="0 0 80 50" fill="none"><path d="M8.81836 37.9395C11.8945 37.9395 13.4326 39.4889 13.4326 42.5879V44.7412C13.4326 46.1768 13.0339 47.3047 12.2363 48.125C11.4616 48.9453 10.3223 49.3555 8.81836 49.3555H4.61426C3.11035 49.3555 1.95964 48.9453 1.16211 48.125C0.38737 47.3047 0 46.1768 0 44.7412V42.5879C0 41.084 0.398763 39.9333 1.19629 39.1357C1.99382 38.3382 3.13314 37.9395 4.61426 37.9395H8.81836ZM17.9443 49.0137C16.8278 49.0137 16.2695 48.4782 16.2695 47.4072C16.2695 46.8831 16.429 46.3477 16.748 45.8008L38.9648 3.24707C40.0358 1.08236 42.0182 0 44.9121 0H50.6543C51.7708 0 52.3291 0.546875 52.3291 1.64062C52.3291 2.14193 52.1582 2.67741 51.8164 3.24707L29.6338 45.8008C28.5628 47.9427 26.5804 49.0137 23.6865 49.0137H17.9443ZM55.166 47.2705V41.3916C55.166 39.7054 56.1686 38.1673 58.1738 36.7773L67.2656 30.3174L58.1738 23.8916C56.1686 22.5016 55.166 20.9635 55.166 19.2773V13.3984C55.166 12.5553 55.4736 11.9743 56.0889 11.6553C56.3167 11.5413 56.5902 11.4844 56.9092 11.4844C57.251 11.4844 57.6725 11.6553 58.1738 11.9971L77.6221 25.7715C78.9665 26.7513 79.6501 27.9932 79.6729 29.4971V31.1719C79.6729 32.6758 78.9893 33.9062 77.6221 34.8633L58.1738 48.6719C57.6725 48.9909 57.251 49.1504 56.9092 49.1504C56.5674 49.1504 56.2939 49.0934 56.0889 48.9795C55.4736 48.6833 55.166 48.1136 55.166 47.2705Z"/></svg>`;
+    
+    const mockupHTML = (extraClass = "") => `
+      <div class="mockup-app ${extraClass}">
+        <div class="mockup-header">
+          <div class="window-dots">
+            <div style="background:oklch(0.6 0.15 20)"></div>
+            <div style="background:oklch(0.8 0.15 80)"></div>
+            <div style="background:oklch(0.7 0.15 160)"></div>
+          </div>
+          <div class="mockup-url-bar">api.example.com/v3/openapi.json</div>
+        </div>
+        <div class="mockup-body">
+          <div class="mockup-sidebar">
+            <span class="syn-key">openapi:</span> <span class="syn-str">"3.0.0"</span><br>
+            <span class="syn-key">info:</span><br>
+            &nbsp;&nbsp;<span class="syn-key">title:</span> <span class="syn-val">Petstore API</span><br>
+            &nbsp;&nbsp;<span class="syn-key">version:</span> <span class="syn-str">"1.0.0"</span><br>
+            <span class="syn-key">paths:</span><br>
+            &nbsp;&nbsp;<span class="syn-key">/pets:</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="syn-key">get:</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="syn-val">summary: List pets</span>
+          </div>
+          <div class="mockup-main">
+            <div class="endpoint-card">
+              <div class="method-badge bg-get">GET</div>
+              <div class="ep-path">/pets</div>
+              <div class="ep-desc">List all pets</div>
+            </div>
+            <div class="endpoint-card active">
+              <div class="method-badge bg-post">POST</div>
+              <div class="ep-path">/pets</div>
+              <div class="ep-desc" style="color:var(--color-text-primary)">Create a pet</div>
+            </div>
+            <div class="endpoint-card">
+              <div class="method-badge bg-get">GET</div>
+              <div class="ep-path">/pets/{petId}</div>
+              <div class="ep-desc">Get pet by ID</div>
+            </div>
+            <div class="endpoint-card">
+              <div class="method-badge bg-del">DEL</div>
+              <div class="ep-path">/pets/{petId}</div>
+              <div class="ep-desc">Delete pet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const generateTileHTML = (theme) => `
+      <div class="theme-container ${theme.class}">
+        <div class="theme-header">
+          <div class="theme-title">Theme: ${theme.name}</div>
+          <p>${theme.desc}</p>
+        </div>
+        
+        <div class="tiles-wrapper">
+          <!-- SMALL TILE (440x280) -->
+          <div>
+            <div id="small-${theme.id}" class="store-tile tile-small">
+              <div class="mq-glow" style="width:400px; height:400px; top:-100px; right: -50px;"></div>
+              <div class="sm-logo-box">${iconLogo}</div>
+              <div class="sm-seo">OpenAPI Viewer</div>
+              <div class="sm-title">OpenAPI Lens</div>
+              <div class="sm-badge">${iconCheck} Zero Setup Required</div>
+            </div>
+            <div class="btn-container">
+              <button class="btn" onclick="downloadImage('small-${theme.id}', this)">Download Small Tile</button>
+            </div>
+          </div>
+
+          <!-- MARQUEE TILE (1400x560) -->
+          <div>
+            <div class="marquee-wrapper">
+              <div id="marquee-${theme.id}" class="store-tile tile-marquee">
+                <div class="mq-glow"></div>
+                <div class="mq-left">
+                  <div class="mq-seo-badge">✓ OpenAPI Viewer</div>
+                  <h2 class="mq-title">Render APIs<br>Instantly.</h2>
+                  <p class="mq-desc">Zero-setup OpenAPI spec rendering directly in your browser. Beautiful, fast, and secure.</p>
+                  <div class="mq-features">
+                    <div class="mq-feat"><div class="icon">${iconCheck}</div>Auto-detects specs on any page</div>
+                    <div class="mq-feat"><div class="icon">${iconCheck}</div>Browse endpoints & response models</div>
+                    <div class="mq-feat"><div class="icon">${iconCheck}</div>Supports local JSON & YAML files</div>
+                  </div>
+                </div>
+                <div class="mq-right">
+                  ${mockupHTML()}
+                </div>
+              </div>
+            </div>
+            <div class="btn-container">
+              <button class="btn" onclick="downloadImage('marquee-${theme.id}', this)">Download Marquee Tile</button>
+            </div>
+          </div>
+          
+          <!-- SCREENSHOT TILE (1280x800) -->
+          <div>
+            <div class="sc-wrapper">
+              <div id="screenshot-${theme.id}" class="store-tile tile-screenshot">
+                <div class="sc-glow"></div>
+                <div class="sc-header">
+                  <div class="sc-title">Beautiful OpenAPI Viewer</div>
+                  <div class="sc-desc">Instantly render OpenAPI specs directly in your browser without leaving the page.</div>
+                </div>
+                ${mockupHTML('sc-mockup')}
+              </div>
+            </div>
+            <div class="btn-container">
+              <button class="btn" onclick="downloadImage('screenshot-${theme.id}', this)">Download Store Screenshot</button>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    `;
+
+    document.getElementById('themes-root').innerHTML = themes.map(generateTileHTML).join('');
+
+    // Fix for the copy bug: Force a direct download fallback using standard anchor clicking.
+    // Clipboard API fails on `file://` scheme because it is insecure.
+    async function downloadImage(id, btn) {
+      const el = document.getElementById(id);
+      if(!el) return;
+      
+      const originalText = btn.innerText;
+      btn.innerText = "Processing...";
+      
+      // FIX CROP ISSUE: Use html-to-image which natively handles scales and high-DPI displays flawlessly!
+      try {
+        const dataUrl = await htmlToImage.toPng(el, {
+          pixelRatio: 2
+        });
+        
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        
+        try {
+          // Attempt to copy to clipboard first
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          btn.innerText = "✓ Copied!";
+        } catch (copyErr) {
+          console.log('Clipboard blocked by Chrome (file://), falling back to download...', copyErr);
+          // Trigger download fallback
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = `openapi-lens-${id}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          btn.innerText = "✓ Downloaded!";
+        }
+        
+        setTimeout(() => btn.innerText = originalText, 2500);
+      } catch(e) {
+        console.error(e);
+        btn.innerText = "Error (See console)";
+        setTimeout(() => btn.innerText = originalText, 2500);
+      }
+    }
+  </script>
+</body>
+</html>

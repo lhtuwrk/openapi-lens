@@ -2,6 +2,11 @@
 
 All notable changes to OpenAPI Lens are documented here.
 
+## [1.5.2] - 2026-08-10
+
+### Fixed
+- **Support for oneOf and anyOf schemas** — The extension now correctly resolves schemas wrapped in `oneOf` or `anyOf`. It defaults to rendering the first alternative so that examples and structures are properly shown.
+
 ## [1.5.1] - 2026-07-19
 
 ### Fixed
