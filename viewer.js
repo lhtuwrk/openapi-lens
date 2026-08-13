@@ -5,7 +5,7 @@
   const ICON_COPY = `<svg class="icon-default" ${SVG_OPEN}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
   const ICON_CHECK = `<svg class="icon-alt" ${SVG_OPEN}><polyline points="20 6 9 17 4 12"/></svg>`;
   const ICON_DOWNLOAD = `<svg ${SVG_OPEN}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
-  const RECENT_SPECS_KEY = "recentSpecs";
+  const RECENT_SPECS_KEY = "oal_recent_specs";
   const LAST_SEEN_VERSION_KEY = "lastSeenVersion";
   const WHATS_NEW_MAX_ITEMS = 6;
   const MAX_RECENT_SPECS = 15;
@@ -504,47 +504,19 @@
   function formatDescription(text, emptyText = "No description.") {
     const raw = String(text || "").trim();
     if (!raw) return `<div class="muted">${escapeHtml(emptyText)}</div>`;
-
-    const blocks = parseDescriptionBlocks(raw);
-    if (!blocks.length) return `<div class="muted">${escapeHtml(emptyText)}</div>`;
-
-    return `
-      <div class="description-flow">
-        ${blocks.map((block) => {
-          if (block.type === "heading") {
-            return `<div class="description-heading">${renderInlineText(block.content)}</div>`;
-          }
-          if (block.type === "code") {
-            const lang = block.language ? `<div class="description-code-lang">${escapeHtml(block.language)}</div>` : "";
-            return `
-              <div class="description-code-wrap">
-                ${lang}
-                <pre class="description-code">${escapeHtml(block.content || "")}</pre>
-              </div>
-            `;
-          }
-          const paragraphHtml = renderInlineText(block.content).replace(/\n/g, "<br>");
-          return `<p class="description-paragraph">${paragraphHtml}</p>`;
-        }).join("")}
-      </div>
-    `;
+    if (window.marked && window.DOMPurify) {
+      return `<div class="markdown-body">${window.DOMPurify.sanitize(window.marked.parse(raw))}</div>`;
+    }
+    return `<div class="description-flow"><p class="description-paragraph">${escapeHtml(raw).replace(/\n/g, "<br>")}</p></div>`;
   }
 
   function formatDescriptionCompact(text, emptyText = "") {
     const raw = String(text || "").trim();
     if (!raw) return emptyText ? `<span class="muted">${escapeHtml(emptyText)}</span>` : "";
-    const blocks = parseDescriptionBlocks(raw);
-    if (!blocks.length) return emptyText ? `<span class="muted">${escapeHtml(emptyText)}</span>` : "";
-
-    return blocks.map((block) => {
-      if (block.type === "heading") {
-        return `<div class="description-inline-heading">${renderInlineText(block.content)}</div>`;
-      }
-      if (block.type === "code") {
-        return `<pre class="description-inline-code">${escapeHtml(block.content || "")}</pre>`;
-      }
-      return `<div class="description-inline-text">${renderInlineText(block.content).replace(/\n/g, "<br>")}</div>`;
-    }).join("");
+    if (window.marked && window.DOMPurify) {
+      return `<div class="markdown-body compact">${window.DOMPurify.sanitize(window.marked.parse(raw))}</div>`;
+    }
+    return `<div class="description-inline-text">${escapeHtml(raw).replace(/\n/g, "<br>")}</div>`;
   }
 
   function parseSpec(text) {
@@ -2095,7 +2067,6 @@
       setStatus(visible === 0 ? "No matches." : `Showing ${visible} endpoint(s).`, visible === 0);
     });
 
-    // "/" focuses the endpoint search from anywhere (unless already typing).
     window.addEventListener("keydown", (event) => {
       if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
       const target = event.target;
@@ -2105,6 +2076,21 @@
       event.preventDefault();
       search.focus();
       search.select();
+    });
+
+    document.getElementById("expand-all-btn")?.addEventListener("click", () => {
+      root.querySelectorAll(".endpoint-row").forEach(row => {
+        if (!row.classList.contains("expanded")) {
+          row.classList.add("expanded");
+          renderDetails(row);
+        }
+      });
+    });
+
+    document.getElementById("collapse-all-btn")?.addEventListener("click", () => {
+      root.querySelectorAll(".endpoint-row").forEach(row => {
+        row.classList.remove("expanded");
+      });
     });
   }
 

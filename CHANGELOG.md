@@ -2,6 +2,12 @@
 
 All notable changes to OpenAPI Lens are documented here.
 
+## [1.6.0] - 2026-08-13
+
+### Added
+- **Expand / Collapse All** — Added buttons to the Docs panel header to instantly expand or collapse all endpoints across the entire spec for easier browsing.
+- **Markdown Support** — Endpoint, tag, and schema descriptions are now fully rendered as Markdown. Tables, links, code blocks, and rich typography will display properly.
+
 ## [1.5.3] - 2026-08-13
 
 ### Added

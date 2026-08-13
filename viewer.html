@@ -64,6 +64,12 @@
               <span class="panel-title">OPENAPI DOCS</span>
             </div>
             <div class="panel-head-right">
+              <button id="expand-all-btn" class="copy-btn icon-btn-square" title="Expand all endpoints and tags" aria-label="Expand all">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+              </button>
+              <button id="collapse-all-btn" class="copy-btn icon-btn-square" title="Collapse all endpoints and tags" aria-label="Collapse all">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></svg>
+              </button>
               <span class="panel-tag" id="spec-version">SPEC</span>
             </div>
           </div>
@@ -147,6 +153,8 @@
     </div>
 
     <script src="libs/js-yaml.min.js"></script>
+    <script src="libs/marked.min.js"></script>
+    <script src="libs/purify.min.js"></script>
     <script src="viewer.js"></script>
   </body>
 </html>
