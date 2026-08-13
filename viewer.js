@@ -838,41 +838,6 @@
       resolved = merged;
     }
 
-    if (Array.isArray(resolved.oneOf) && resolved.oneOf.length) {
-      const firstPart = resolveSchemaRef(resolved.oneOf[0], refTrail);
-      if (firstPart && typeof firstPart === "object") {
-        const withoutOneOf = { ...resolved };
-        delete withoutOneOf.oneOf;
-
-        resolved = {
-          ...firstPart,
-          ...withoutOneOf,
-          properties: {
-            ...(firstPart.properties || {}),
-            ...((withoutOneOf.properties && typeof withoutOneOf.properties === "object") ? withoutOneOf.properties : {})
-          },
-          required: Array.from(new Set([...(Array.isArray(firstPart.required) ? firstPart.required : []), ...(Array.isArray(withoutOneOf.required) ? withoutOneOf.required : [])]))
-        };
-      }
-    }
-
-    if (Array.isArray(resolved.anyOf) && resolved.anyOf.length) {
-      const firstPart = resolveSchemaRef(resolved.anyOf[0], refTrail);
-      if (firstPart && typeof firstPart === "object") {
-        const withoutAnyOf = { ...resolved };
-        delete withoutAnyOf.anyOf;
-
-        resolved = {
-          ...firstPart,
-          ...withoutAnyOf,
-          properties: {
-            ...(firstPart.properties || {}),
-            ...((withoutAnyOf.properties && typeof withoutAnyOf.properties === "object") ? withoutAnyOf.properties : {})
-          },
-          required: Array.from(new Set([...(Array.isArray(firstPart.required) ? firstPart.required : []), ...(Array.isArray(withoutAnyOf.required) ? withoutAnyOf.required : [])]))
-        };
-      }
-    }
 
     return resolved;
   }
@@ -934,6 +899,9 @@
       return String(s.type);
     }
 
+    if (Array.isArray(s.oneOf) && s.oneOf.length) return "oneOf";
+    if (Array.isArray(s.anyOf) && s.anyOf.length) return "anyOf";
+
     if (s.properties && typeof s.properties === "object") return "object";
     if (s.items) {
       const itemType = schemaType(s.items);
@@ -965,15 +933,38 @@
     if (s.example !== undefined) return s.example;
     if (Array.isArray(s.enum) && s.enum.length) return s.enum[0];
 
+    let out = null;
+    let isObject = false;
+
     if (s.type === "object" || (s.properties && typeof s.properties === "object")) {
+      isObject = true;
+      out = {};
       const props = s.properties && typeof s.properties === "object" ? s.properties : {};
-      const out = {};
       for (const [key, child] of Object.entries(props)) {
         const childExample = buildExampleFromSchema(child, depth + 1);
         out[key] = childExample !== null ? childExample : "";
       }
-      return out;
     }
+
+    if (Array.isArray(s.oneOf) && s.oneOf.length) {
+      const optionExample = buildExampleFromSchema(s.oneOf[0], depth + 1);
+      if (optionExample && typeof optionExample === "object" && !Array.isArray(optionExample)) {
+        isObject = true;
+        out = { ...(out || {}), ...optionExample };
+      } else if (out === null) {
+        out = optionExample;
+      }
+    } else if (Array.isArray(s.anyOf) && s.anyOf.length) {
+      const optionExample = buildExampleFromSchema(s.anyOf[0], depth + 1);
+      if (optionExample && typeof optionExample === "object" && !Array.isArray(optionExample)) {
+        isObject = true;
+        out = { ...(out || {}), ...optionExample };
+      } else if (out === null) {
+        out = optionExample;
+      }
+    }
+
+    if (isObject) return out;
 
     if (s.type === "array" || s.items) {
       const item = buildExampleFromSchema(s.items, depth + 1);
@@ -983,41 +974,63 @@
     if (s.type === "string") return "";
     if (s.type === "number" || s.type === "integer") return 0;
     if (s.type === "boolean") return false;
-    return null;
+    return out !== null ? out : null;
   }
 
   function schemaChildren(schema, basePath = "") {
     const s = resolveSchemaRef(schema);
     if (!s || typeof s !== "object") return [];
 
+    const children = [];
+
     if ((s.type === "object" || (s.properties && typeof s.properties === "object")) && s.properties) {
       const required = new Set(Array.isArray(s.required) ? s.required : []);
-      return Object.entries(s.properties).map(([name, child]) => ({
+      children.push(...Object.entries(s.properties).map(([name, child]) => ({
         name,
         schema: child,
         required: required.has(name),
         path: basePath ? `${basePath}.${name}` : name
-      }));
+      })));
+    }
+
+    if (Array.isArray(s.oneOf) && s.oneOf.length) {
+      children.push(...s.oneOf.map((child, idx) => ({
+        name: `<oneOf ${idx + 1}>`,
+        schema: child,
+        required: false,
+        path: basePath
+      })));
+    }
+
+    if (Array.isArray(s.anyOf) && s.anyOf.length) {
+      children.push(...s.anyOf.map((child, idx) => ({
+        name: `<anyOf ${idx + 1}>`,
+        schema: child,
+        required: false,
+        path: basePath
+      })));
     }
 
     if (s.type === "array" || s.items) {
       const itemSchema = resolveSchemaRef(s.items || {});
-      if (!itemSchema || typeof itemSchema !== "object") return [];
+      if (itemSchema && typeof itemSchema === "object") {
+        const itemHasChildren =
+          (itemSchema.type === "object" && itemSchema.properties && Object.keys(itemSchema.properties).length > 0) ||
+          (itemSchema.properties && typeof itemSchema.properties === "object" && Object.keys(itemSchema.properties).length > 0) ||
+          itemSchema.type === "array" ||
+          !!itemSchema.items ||
+          (Array.isArray(itemSchema.oneOf) && itemSchema.oneOf.length) ||
+          (Array.isArray(itemSchema.anyOf) && itemSchema.anyOf.length);
 
-      const itemHasChildren =
-        (itemSchema.type === "object" && itemSchema.properties && Object.keys(itemSchema.properties).length > 0) ||
-        (itemSchema.properties && typeof itemSchema.properties === "object" && Object.keys(itemSchema.properties).length > 0) ||
-        itemSchema.type === "array" ||
-        !!itemSchema.items;
-
-      if (!itemHasChildren) return [];
-
-      // For arrays, render child structure directly under the array field,
-      // instead of introducing a synthetic "list/items" property row.
-      return schemaChildren(itemSchema, `${basePath}[]`);
+        if (itemHasChildren) {
+          // For arrays, render child structure directly under the array field,
+          // instead of introducing a synthetic "list/items" property row.
+          children.push(...schemaChildren(itemSchema, `${basePath}[]`));
+        }
+      }
     }
 
-    return [];
+    return children;
   }
 
   function schemaDisplayName(schema, fallback = "schema") {
@@ -1057,6 +1070,33 @@
   }
 
   function renderSchemaNode(entry, depth) {
+    if (entry.isPolymorphic) {
+      const optionsHtml = entry.options.map((opt, idx) => {
+        const title = schemaDisplayName(opt, `Option ${idx + 1}`);
+        return `<option value="${idx}">${escapeHtml(title)}</option>`;
+      }).join("");
+
+      const childrenHtml = entry.options.map((opt, idx) => {
+        const title = schemaDisplayName(opt, `Option ${idx + 1}`);
+        const childEntry = { name: title, schema: opt, required: false, path: entry.path };
+        return `<div class="poly-child poly-child-${idx}">${renderSchemaNode(childEntry, depth)}</div>`;
+      }).join("");
+
+      return `
+        <div class="schema-poly-node" data-selected="0" style="--schema-depth:${depth}">
+          <div class="poly-header">
+            <span class="poly-label">${escapeHtml(entry.polyType)}</span>
+            <select class="poly-select" data-action="switch-poly">
+              ${optionsHtml}
+            </select>
+          </div>
+          <div class="poly-children">
+            ${childrenHtml}
+          </div>
+        </div>
+      `;
+    }
+
     const nodeSchema = resolveSchemaRef(entry.schema);
     const children = schemaChildren(nodeSchema, entry.path || "");
     const expandable = children.length > 0;
@@ -2017,6 +2057,15 @@
     });
 
     root.addEventListener("change", (e) => {
+      const polySwitcher = e.target.closest('[data-action="switch-poly"]');
+      if (polySwitcher) {
+        const polyNode = polySwitcher.closest('.schema-poly-node');
+        if (polyNode) {
+          polyNode.dataset.selected = polySwitcher.value;
+        }
+        return;
+      }
+
       const exampleSwitcher = e.target.closest('[data-action="set-example"]');
       if (!exampleSwitcher) return;
       const split = exampleSwitcher.closest(".split-media");

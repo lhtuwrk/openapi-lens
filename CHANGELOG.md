@@ -2,6 +2,11 @@
 
 All notable changes to OpenAPI Lens are documented here.
 
+## [1.5.3] - 2026-08-13
+
+### Added
+- **Polymorphic schema selector** — Schemas with `oneOf` or `anyOf` now display a dropdown to let you interactively switch between the different structural options. The schema tree and example JSON update live based on your selection.
+
 ## [1.5.2] - 2026-08-10
 
 ### Fixed
